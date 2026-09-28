@@ -12,7 +12,7 @@
     const imported = read('kitchenIllustrationImported');
     const edits = (() => { try { return JSON.parse(localStorage.getItem('kitchenIllustrationEdits') || '{}'); } catch { return {}; } })();
     const deleted = new Set(read('kitchenIllustrationDeleted'));
-    const firstBuiltIn = new Set();
+    const byName = new Map();
     const all = [
       ...catalog.map((item, index) => ({ ...item, id: item.id || `base-${index}-${item.name}`, _base: true })),
       ...pending.map((item, index) => ({ ...item, id: item.id || `new-${index}-${item.name}` })),
@@ -22,12 +22,12 @@
     all.forEach((raw) => {
       const item = { ...raw, ...(edits[raw.id] || {}) };
       if (!item.name || deleted.has(item.id)) return;
-      if (raw._base && builtIns.has(item.name)) {
-        if (!firstBuiltIn.has(item.name)) { firstBuiltIn.add(item.name); return; }
-      }
-      byId.set(item.id, item);
+      if (builtIns.has(item.name)) return;
+      const key = item.name.trim().toLocaleLowerCase();
+      const previous = byName.get(key);
+      byName.set(key, previous ? { ...previous, ...item, id: previous.id } : item);
     });
-    for (const item of byId.values()) {
+    for (const item of byName.values()) {
       const button = document.createElement('button');
       button.className = 'tool'; button.dataset.dynamicCatalog = 'true';
       const image = item.imageData || (item.file ? '../kitchen-illustration/assets/廚房工具插畫示例/' + encodeURIComponent(item.file) : 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260"><rect width="100%" height="100%" fill="#f4f0e3"/><text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" fill="#748078" font-size="24">待補插畫</text></svg>'));
@@ -47,7 +47,10 @@
         const payload = JSON.parse(await file.text());
         const tools = Array.isArray(payload) ? payload : payload.tools;
         if (!Array.isArray(tools)) throw new Error('missing tools array');
-        localStorage.setItem('kitchenIllustrationImported', JSON.stringify(tools));
+        const previous = read('kitchenIllustrationImported');
+        const merged = new Map(previous.map((item) => [String(item.name || '').trim().toLocaleLowerCase(), item]));
+        tools.forEach((item) => { const key = String(item.name || '').trim().toLocaleLowerCase(); if (key) merged.set(key, { ...(merged.get(key) || {}), ...item }); });
+        localStorage.setItem('kitchenIllustrationImported', JSON.stringify([...merged.values()]));
         sync();
         if (status) status.textContent = `匯入完成：${tools.length} 項工具`;
       } catch { if (status) status.textContent = '匯入失敗：請選擇插畫工作台下載的 JSON 檔'; }
