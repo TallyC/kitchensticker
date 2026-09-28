@@ -1,0 +1,1882 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>環境標語預覽修正工具</title>
+  <style>
+    :root {
+      --paper:#f7f4ee;
+      --panel:#fffdf9;
+      --ink:#2f2a25;
+      --muted:#70675f;
+      --line:#ded4c8;
+      --green:#405f50;
+      --green-soft:#eaf0ec;
+      --gold:#a88652;
+      --gold-soft:#f6efe3;
+      --amber:#b96f3e;
+      --gray-soft:#efebe5;
+      --shadow:0 10px 28px rgba(47,42,37,.08);
+      --radius:8px;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      background:var(--paper);
+      color:var(--ink);
+      font-family:system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif;
+      line-height:1.5;
+    }
+    header {
+      position:sticky;
+      top:0;
+      z-index:5;
+      background:rgba(247,244,238,.96);
+      border-bottom:1px solid var(--line);
+      backdrop-filter:blur(10px);
+    }
+    .topbar {
+      max-width:1280px;
+      margin:0 auto;
+      padding:14px 16px;
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:12px;
+      align-items:center;
+    }
+    h1 { margin:0; font-size:22px; letter-spacing:0; }
+    .sub { color:var(--muted); font-size:13px; margin-top:3px; }
+    .toolbar { display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+    button, input, select, textarea { font:inherit; }
+    button {
+      min-height:40px;
+      border:0;
+      border-radius:var(--radius);
+      padding:9px 12px;
+      background:var(--green);
+      color:white;
+      font-weight:700;
+      cursor:pointer;
+    }
+    button.secondary { background:white; color:var(--ink); border:1px solid var(--line); }
+    button.warn { background:#fff7f0; color:#8d4c27; border:1px solid #e8c5a8; }
+    button:focus, input:focus, select:focus, textarea:focus {
+      outline:2px solid rgba(64,95,80,.24);
+      outline-offset:1px;
+    }
+    main {
+      max-width:1280px;
+      margin:0 auto;
+      padding:14px 16px 28px;
+      display:grid;
+      grid-template-columns:300px minmax(0,1fr);
+      gap:14px;
+    }
+    body.list-hidden main { grid-template-columns:1fr; }
+    body.list-hidden .side { display:none; }
+    .panel {
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+    .side { align-self:start; position:sticky; top:84px; max-height:calc(100vh - 100px); overflow:hidden; display:flex; flex-direction:column; }
+    .controls { padding:12px; border-bottom:1px solid var(--line); display:grid; gap:8px; }
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+    .stat { background:#fbfaf6; border:1px solid var(--line); border-radius:var(--radius); padding:7px; }
+    .stat span { display:block; color:var(--muted); font-size:11px; }
+    .stat strong { color:var(--green); font-size:18px; }
+    .seg { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .seg button { min-height:36px; padding:7px; background:white; color:var(--ink); border:1px solid var(--line); }
+    .seg button.active { background:var(--green); color:white; border-color:var(--green); }
+    .search-grid { display:grid; grid-template-columns:1fr 120px; gap:8px; }
+    input, select, textarea {
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      background:white;
+      color:var(--ink);
+      padding:9px;
+      min-height:40px;
+    }
+    textarea { min-height:92px; resize:vertical; }
+    .list { overflow:auto; padding:8px; }
+    .item {
+      width:100%;
+      text-align:left;
+      background:white;
+      color:var(--ink);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:10px;
+      margin-bottom:8px;
+      display:grid;
+      gap:5px;
+    }
+    .item.active { border-color:var(--green); box-shadow:0 0 0 2px rgba(64,95,80,.12); }
+    .item-title { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+    .item strong { font-size:15px; }
+    .badge {
+      flex:0 0 auto;
+      font-size:12px;
+      border-radius:999px;
+      padding:2px 8px;
+      border:1px solid transparent;
+      font-weight:700;
+    }
+    .badge.notice { background:var(--green-soft); color:var(--green); border-color:#cddad2; }
+    .badge.manage { background:var(--gold-soft); color:#76562b; border-color:#e3d0ac; }
+    .badge.review { background:#fff3e9; color:#915227; border-color:#e9c7ad; }
+    .meta { color:var(--muted); font-size:12px; }
+    .workspace { display:grid; gap:14px; }
+    .preview-area {
+      display:grid;
+      grid-template-columns:minmax(280px, .9fr) minmax(320px, 1.1fr);
+      gap:14px;
+    }
+    .preview-wrap, .editor { padding:14px; }
+    h2 { margin:0 0 10px; font-size:18px; }
+    .hint { color:var(--muted); font-size:13px; margin-bottom:12px; }
+    .sign {
+      position:relative;
+      overflow:hidden;
+      border-radius:var(--radius);
+      min-height:260px;
+      display:grid;
+      grid-template-rows:17fr 70fr 10fr;
+      gap:clamp(5px, 1%, 12px);
+      padding:22px;
+      border:1px solid rgba(255,255,255,.1);
+      box-shadow:0 12px 34px rgba(47,42,37,.14);
+    }
+    .sign-head {
+      position:relative;
+      z-index:1;
+      min-height:0;
+      display:flex;
+      align-items:end;
+    }
+    .sign-main {
+      position:relative;
+      z-index:1;
+      min-height:0;
+      display:flex;
+      align-items:center;
+      justify-content:var(--body-justify, flex-start);
+    }
+    .print-row { grid-column:1/-1; display:grid; grid-template-columns:1fr .7fr .7fr .8fr; gap:8px; }
+    .sign.notice {
+      background:#2f2a25;
+      color:#f4efe7;
+    }
+    .sign.manage {
+      background:#fffdf9;
+      color:var(--ink);
+      border:2px solid var(--green);
+    }
+    .sign.review {
+      background:#fff7ef;
+      color:var(--ink);
+      border:2px solid #c48657;
+    }
+    .sign-kicker {
+      display:none;
+      color:var(--gold);
+      font-weight:800;
+      font-size:13px;
+      letter-spacing:0;
+      margin-bottom:8px;
+    }
+    .sign.manage .sign-kicker { color:var(--green); }
+    .sign.review .sign-kicker { color:#9a5428; }
+    .sign h3 {
+      margin:0;
+      width:100%;
+      font-size:var(--title-size, 26px);
+      line-height:1.25;
+      letter-spacing:0;
+      color:var(--title-color, inherit);
+      font-family:var(--title-font, "Noto Serif TC","PMingLiU",serif);
+      text-align:var(--title-align, left);
+      text-align-last:var(--title-last-align, auto);
+    }
+    .sign-body {
+      width:100%;
+      display:block;
+      white-space:pre-wrap;
+      font-size:var(--body-size, 17px);
+      line-height:1.75;
+      color:var(--body-color, inherit);
+      font-family:var(--body-font, system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif);
+      text-align:var(--body-align, left);
+      text-align-last:var(--body-last-align, auto);
+    }
+    .sign-foot {
+      position:relative;
+      z-index:1;
+      width:100%;
+      min-height:0;
+      display:flex;
+      align-items:var(--footer-valign, flex-start);
+      justify-content:var(--footer-justify, flex-start);
+      margin-top:0;
+      padding-top:clamp(10px, 2%, 18px);
+      border-top:1px solid rgba(168,134,82,.28);
+      color:var(--footer-color, #c8b69b);
+      font-size:var(--footer-size, 13px);
+      line-height:1.45;
+      font-family:var(--footer-font, system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif);
+      text-align:var(--footer-align, left);
+      text-align-last:var(--footer-last-align, auto);
+    }
+    .sign-text {
+      display:block;
+      width:100%;
+      max-width:100%;
+    }
+    .sign-main .sign-text, .sign-foot .sign-text {
+      text-align:inherit;
+      white-space:pre-wrap;
+    }
+    .sign-elements {
+      position:absolute;
+      inset:0;
+      z-index:0;
+      pointer-events:none;
+    }
+    .design-element {
+      position:absolute;
+      transform:translate(-50%, -50%);
+      pointer-events:auto;
+      cursor:move;
+      user-select:none;
+    }
+    .design-element.selected { outline:2px solid rgba(168,134,82,.75); outline-offset:3px; }
+    .design-element.line { height:1px; background:currentColor; opacity:.45; }
+    .design-element.image img { display:block; width:100%; height:100%; object-fit:contain; pointer-events:none; }
+    .sign.manage .sign-foot, .sign.review .sign-foot { color:var(--muted); border-top-color:var(--line); }
+    .source-box {
+      margin-top:12px;
+      background:#fbfaf6;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:10px;
+      font-size:13px;
+    }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .design-block {
+      grid-column:1/-1;
+      background:#fbfaf6;
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:10px;
+      display:grid;
+      gap:10px;
+    }
+    .design-block h3 {
+      margin:0;
+      color:var(--green);
+      font-size:15px;
+    }
+    .design-row { display:grid; grid-template-columns:1.1fr .7fr 1fr .8fr; gap:8px; }
+    .field { display:grid; gap:5px; }
+    label { color:var(--muted); font-size:13px; }
+    .full { grid-column:1/-1; }
+    .actions { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+    .element-actions { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,1fr); gap:8px; }
+    .handoff-note { color:var(--muted); font-size:13px; }
+    .table-panel { padding:14px; }
+    table { width:100%; border-collapse:collapse; background:white; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
+    th, td { border-bottom:1px solid var(--line); padding:8px; text-align:left; vertical-align:top; font-size:13px; }
+    th { background:var(--green-soft); color:var(--green); }
+    tr:last-child td { border-bottom:0; }
+    .print-sheet { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px; }
+    .mini-label {
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:14px;
+      min-height:130px;
+      background:white;
+      page-break-inside:avoid;
+    }
+    .mini-label.notice { background:#2f2a25; color:#f4efe7; }
+    .mini-label.manage { border:2px solid var(--green); }
+    .mini-label h3 { margin:0 0 8px; font-size:19px; }
+    .mini-label p { margin:0; white-space:pre-wrap; }
+    .hide { display:none; }
+    @media (max-width:980px) {
+      main { grid-template-columns:1fr; }
+      .side { position:static; max-height:none; }
+      .preview-area { grid-template-columns:1fr; }
+      .topbar { grid-template-columns:1fr; }
+      .toolbar { justify-content:flex-start; }
+    }
+    @media (max-width:620px) {
+      .stats, .seg, .search-grid, .form-grid, .actions, .design-row, .print-row { grid-template-columns:1fr; }
+      .sign h3 { font-size:22px; }
+      .sign-body { font-size:16px; }
+    }
+    @page {
+      size:A4 portrait;
+      margin:10mm;
+    }
+    @media print {
+      * {
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      }
+      header, .side, .editor, .table-panel, .hint, .source-box, .toolbar, .preview-wrap > h2 { display:none !important; }
+      body { background:white; }
+      main { display:block; padding:0; max-width:none; }
+      .panel { box-shadow:none; border:0; }
+      .preview-area { display:block; }
+      .preview-wrap { padding:0; width:100%; display:flex; justify-content:var(--print-justify, center); }
+      .sign {
+        box-shadow:none;
+        width:var(--print-width, 180mm) !important;
+        height:var(--print-height, auto) !important;
+        min-height:0 !important;
+        margin:0 auto !important;
+        page-break-inside:avoid;
+      }
+    }
+  </style>
+</head>
+<body class="list-hidden">
+  <header>
+    <div class="topbar">
+      <div>
+        <h1>環境標語預覽修正工具</h1>
+        <div class="sub">分類留給後台管理；前台採三段式固定標語模組，可設計字型、大小、顏色並下載含底色 PNG。</div>
+      </div>
+      <div class="toolbar">
+        <button id="exportPng" type="button">下載預覽圖 PNG</button>
+        <button id="newItem" class="secondary" type="button">新增標語</button>
+        <button id="toggleList" class="secondary" type="button">標語清單</button>
+        <button id="exportMarkdown" type="button">匯出 Markdown</button>
+        <button id="exportCsv" class="secondary" type="button">匯出 CSV</button>
+        <button id="backupJson" class="secondary" type="button">備份 JSON</button>
+        <button id="restoreJson" class="secondary" type="button">匯入備份</button>
+        <button id="printPage" class="secondary" type="button">列印預覽</button>
+        <input id="restoreJsonInput" class="hide" type="file" accept="application/json,.json">
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <aside class="panel side">
+      <div class="controls">
+        <div class="stats">
+          <div class="stat"><span>總數</span><strong id="totalCount">0</strong></div>
+          <div class="stat"><span>告示</span><strong id="noticeCount">0</strong></div>
+          <div class="stat"><span>管理</span><strong id="manageCount">0</strong></div>
+          <div class="stat"><span>待修</span><strong id="reviewCount">0</strong></div>
+        </div>
+        <div class="seg">
+          <button id="filterAll" class="active" type="button" data-filter="全部">全部</button>
+          <button id="filterNotice" type="button" data-filter="告示型">告示型</button>
+          <button id="filterManage" type="button" data-filter="管理型">管理型</button>
+        </div>
+        <div class="search-grid">
+          <input id="searchBox" placeholder="搜尋照片、原文、標題">
+          <select id="statusFilter">
+            <option value="全部">全部狀態</option>
+            <option value="草稿">草稿</option>
+            <option value="待現場確認">待現場確認</option>
+            <option value="可印製">可印製</option>
+            <option value="先暫緩">先暫緩</option>
+          </select>
+        </div>
+      </div>
+      <div id="itemList" class="list"></div>
+    </aside>
+
+    <section class="workspace">
+      <div class="preview-area">
+        <section class="panel preview-wrap">
+          <h2>即時預覽</h2>
+          <div class="hint">左側選一張標語，右側可修正三段文字與每段樣式；分類只做後台管理，不進入正面主視覺。</div>
+          <article id="signPreview" class="sign notice">
+            <div id="previewElements" class="sign-elements"></div>
+            <div class="sign-head">
+              <div id="previewKicker" class="sign-kicker">告示型</div>
+              <h3 id="previewTitle"></h3>
+            </div>
+            <div class="sign-body sign-main"><div id="previewBody" class="sign-text"></div></div>
+            <div class="sign-foot"><div id="previewFooter" class="sign-text"></div></div>
+          </article>
+          <div class="source-box">
+            <strong>照片與原文</strong>
+            <div id="sourceText" class="meta"></div>
+          </div>
+        </section>
+
+        <section class="panel editor">
+          <h2>修正區</h2>
+          <div class="form-grid">
+            <div class="field">
+              <label>分類</label>
+              <select id="typeInput">
+                <option>告示型</option>
+                <option>管理型</option>
+                <option>待確認</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>狀態</label>
+              <select id="statusInput">
+                <option>草稿</option>
+                <option>待現場確認</option>
+                <option>可印製</option>
+                <option>先暫緩</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>建議張貼位置</label>
+              <input id="locationInput" placeholder="例：廁所牆面、櫃外、入口">
+            </div>
+            <div class="field">
+              <label>優先度</label>
+              <select id="priorityInput">
+                <option>高</option>
+                <option>中</option>
+                <option>低</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label>標題</label>
+              <input id="titleInput" placeholder="標語標題">
+            </div>
+            <div class="field full">
+              <label>正式文案</label>
+              <textarea id="bodyInput" placeholder="輸入正式文案"></textarea>
+            </div>
+            <div class="field full">
+              <label>頁腳/補充提醒</label>
+              <input id="footerInput" placeholder="例：感恩護持清淨道場">
+            </div>
+            <div class="field full">
+              <label>修正備註</label>
+              <textarea id="noteInput" placeholder="現場待確認事項、是否要調整語氣、印製尺寸等"></textarea>
+            </div>
+            <div class="design-block">
+              <h3>圖檔底色與尺寸</h3>
+              <div class="design-row">
+                <div class="field">
+                  <label>底色</label>
+                  <select id="bgInput"></select>
+                </div>
+                <div class="field">
+                  <label>微調色</label>
+                  <input id="bgCustomInput" type="color">
+                </div>
+                <div class="field">
+                  <label>吸管</label>
+                  <button id="bgEyedropper" class="secondary" type="button">吸取顏色</button>
+                </div>
+                <div class="field">
+                  <label>圖檔尺寸</label>
+                  <select id="sizeInput">
+                    <option value="1240x860">橫式 1240 x 860</option>
+                    <option value="1080x1080">方形 1080 x 1080</option>
+                    <option value="860x1240">直式 860 x 1240</option>
+                    <option value="3508x2480">A4 橫式 297 x 210 mm / 300dpi</option>
+                    <option value="2480x3508">A4 直式 210 x 297 mm / 300dpi</option>
+                    <option value="1748x1181">明信片橫式 148 x 100 mm / 300dpi</option>
+                    <option value="1181x1748">明信片直式 100 x 148 mm / 300dpi</option>
+                    <option value="2480x1748">A5 橫式 210 x 148 mm / 300dpi</option>
+                    <option value="1748x2480">A5 直式 148 x 210 mm / 300dpi</option>
+                    <option value="3035x2150">B5 橫式 257 x 182 mm / 300dpi</option>
+                    <option value="2150x3035">B5 直式 182 x 257 mm / 300dpi</option>
+                    <option value="1748x1240">A6 橫式 148 x 105 mm / 300dpi</option>
+                    <option value="1240x1748">A6 直式 105 x 148 mm / 300dpi</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>邊框</label>
+                  <select id="borderInput">
+                    <option value="soft">柔和邊框</option>
+                    <option value="gold">古金邊框</option>
+                    <option value="green">茶綠邊框</option>
+                    <option value="none">無邊框</option>
+                  </select>
+                </div>
+              </div>
+              <div class="print-row">
+                <div class="field">
+                  <label>列印尺寸</label>
+                  <select id="printPresetInput">
+                    <option value="841x594">A1 橫式 841 x 594 mm</option>
+                    <option value="594x841">A1 直式 594 x 841 mm</option>
+                    <option value="515x364">B3 橫式 515 x 364 mm</option>
+                    <option value="364x515">B3 直式 364 x 515 mm</option>
+                    <option value="364x257">B4 橫式 364 x 257 mm</option>
+                    <option value="257x364">B4 直式 257 x 364 mm</option>
+                    <option value="210x148">A5 橫式 210 x 148 mm</option>
+                    <option value="148x210">A5 直式 148 x 210 mm</option>
+                    <option value="257x182">B5 橫式 257 x 182 mm</option>
+                    <option value="182x257">B5 直式 182 x 257 mm</option>
+                    <option value="297x210">A4 橫式 297 x 210 mm</option>
+                    <option value="210x297">A4 直式 210 x 297 mm</option>
+                    <option value="148x100">明信片橫式 148 x 100 mm</option>
+                    <option value="100x148">明信片直式 100 x 148 mm</option>
+                    <option value="148x105">A6 橫式 148 x 105 mm</option>
+                    <option value="105x148">A6 直式 105 x 148 mm</option>
+                    <option value="120x80">標籤 120 x 80 mm</option>
+                    <option value="90x60">小標籤 90 x 60 mm</option>
+                    <option value="custom">自訂</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>列印寬 mm</label>
+                  <input id="printWidthInput" type="number" min="30" max="1000" step="1">
+                </div>
+                <div class="field">
+                  <label>列印高 mm</label>
+                  <input id="printHeightInput" type="number" min="20" max="1000" step="1">
+                </div>
+                <div class="field">
+                  <label>列印對齊</label>
+                  <select id="printAlignInput">
+                    <option value="center">置中</option>
+                    <option value="left">靠左</option>
+                    <option value="right">靠右</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="design-block">
+              <h3>第一段：標題</h3>
+              <div class="design-row">
+                <div class="field">
+                  <label>字型</label>
+                  <select id="titleFontInput"></select>
+                </div>
+                <div class="field">
+                  <label>字體大小</label>
+                  <input id="titleSizeInput" type="number" min="18" max="96" step="1">
+                </div>
+                <div class="field">
+                  <label>顏色</label>
+                  <select id="titleColorInput"></select>
+                </div>
+                <div class="field">
+                  <label>段落排版</label>
+                  <select id="titleAlignInput">
+                    <option value="left">靠左</option>
+                    <option value="center">置中</option>
+                    <option value="right">靠右</option>
+                    <option value="justify">分散</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="design-block">
+              <h3>第二段：內文</h3>
+              <div class="design-row">
+                <div class="field">
+                  <label>字型</label>
+                  <select id="bodyFontInput"></select>
+                </div>
+                <div class="field">
+                  <label>字體大小</label>
+                  <input id="bodySizeInput" type="number" min="14" max="64" step="1">
+                </div>
+                <div class="field">
+                  <label>顏色</label>
+                  <select id="bodyColorInput"></select>
+                </div>
+                <div class="field">
+                  <label>段落排版</label>
+                  <select id="bodyAlignInput">
+                    <option value="left">靠左</option>
+                    <option value="center">置中</option>
+                    <option value="right">靠右</option>
+                    <option value="justify">分散</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="design-block">
+              <h3>第三段：補充提醒</h3>
+              <div class="design-row">
+                <div class="field">
+                  <label>字型</label>
+                  <select id="footerFontInput"></select>
+                </div>
+                <div class="field">
+                  <label>字體大小</label>
+                  <input id="footerSizeInput" type="number" min="12" max="48" step="1">
+                </div>
+                <div class="field">
+                  <label>顏色</label>
+                  <select id="footerColorInput"></select>
+                </div>
+                <div class="field">
+                  <label>段落排版</label>
+                  <select id="footerAlignInput">
+                    <option value="left">靠左</option>
+                    <option value="center">置中</option>
+                    <option value="right">靠右</option>
+                    <option value="justify">分散</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="design-block hide">
+              <h3>扁平裝飾元素</h3>
+              <div class="element-actions">
+                <button id="addLineElement" class="secondary" type="button">加入淡線</button>
+                <button id="importElement" class="secondary" type="button">匯入圖檔</button>
+              </div>
+              <input id="importElementInput" class="hide" type="file" accept="image/*">
+              <div class="design-row">
+                <div class="field">
+                  <label>元素大小</label>
+                  <input id="elementSizeInput" type="number" min="20" max="600" step="5">
+                </div>
+                <div class="field">
+                  <label>元素顏色</label>
+                  <select id="elementColorInput"></select>
+                </div>
+                <div class="field">
+                  <label>透明度</label>
+                  <input id="elementOpacityInput" type="number" min="0.1" max="1" step="0.05">
+                </div>
+                <div class="field">
+                  <label>刪除目前元素</label>
+                  <button id="removeElement" class="warn" type="button">刪除</button>
+                </div>
+              </div>
+              <div class="handoff-note">元素以低調輔助為主，可在預覽圖上拖移；需要特定圖樣時，請匯入 PNG/JPG。</div>
+            </div>
+          </div>
+          <div class="design-block" style="margin-top:12px">
+            <h3>套用標語格式</h3>
+            <div class="design-row">
+              <div class="field">
+                <label>格式來源</label>
+                <select id="formatSourceInput"></select>
+              </div>
+              <div class="field">
+                <label>套用範圍</label>
+                <select id="formatScopeInput">
+                  <option value="all">全部格式</option>
+                  <option value="text">三段文字樣式</option>
+                  <option value="surface">底色、尺寸與邊框</option>
+                  <option value="print">列印尺寸</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>執行</label>
+                <button id="applyFormat" class="secondary" type="button">套用到目前標語</button>
+              </div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="saveItem" type="button">儲存修正</button>
+            <button id="duplicateItem" class="secondary" type="button">複製一筆</button>
+            <button id="resetItem" class="warn" type="button">還原此筆</button>
+            <button id="deleteItem" class="warn" type="button">刪除此筆</button>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel table-panel">
+        <h2>修正總覽</h2>
+        <div class="hint">適合會議時快速掃描：哪些可印、哪些還要回現場確認。</div>
+        <div style="overflow:auto">
+          <table id="summaryTable"></table>
+        </div>
+      </section>
+      <section class="panel table-panel">
+        <h2>資料移交</h2>
+        <div class="handoff-note">網站版資料會保存在目前瀏覽器；交給他人或換電腦前，請先按「備份 JSON」。對方開啟網站後按「匯入備份」，即可接續標語、尺寸與樣式設定。</div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const defaults = [
+      {
+        id:"N001",
+        type:"告示型",
+        status:"待現場確認",
+        priority:"高",
+        source:"標籤製作/IMG_0486.JPG",
+        sourceText:"請留意並自行保管個人物品；如有發現可疑人士，請立即通報大寮法師，謝謝！",
+        location:"電梯/公共入口",
+        title:"個人物品與安全提醒",
+        body:"請隨身照看個人物品。若見陌生人士或異常情況，請即時告知大寮法師。",
+        footer:"感恩護持道場安定。",
+        note:"保留安全提醒，語氣改為安定清楚。"
+      },
+      {
+        id:"N002",
+        type:"告示型",
+        status:"可印製",
+        priority:"高",
+        source:"標籤製作/IMG_0487.JPG",
+        sourceText:"輕聲關門、覺照身心、課堂時段、進出。",
+        location:"出入口/課堂相關門口",
+        title:"輕聲關門 覺照身心",
+        body:"進出請放輕腳步、輕聲關門。安靜，是給自己與他人的一份照顧。",
+        footer:"共同護持清淨學修環境。",
+        note:"此句符合場域精神，可作為住宿區主視覺標語。"
+      },
+      {
+        id:"N003",
+        type:"告示型",
+        status:"草稿",
+        priority:"高",
+        source:"標籤製作/IMG_0488.JPG",
+        sourceText:"禁止硬便；便臭不與他人分享，請至樓下。",
+        location:"廁所隔間",
+        title:"共住清淨提醒",
+        body:"如身體不適或可能產生較重氣味，請優先使用指定廁間或樓下空間。",
+        footer:"感恩體諒共住者。",
+        note:"原文較直白，正式版以照護共住感受為主。"
+      },
+      {
+        id:"N004",
+        type:"告示型",
+        status:"可印製",
+        priority:"高",
+        source:"標籤製作/IMG_0489.JPG; IMG_0490.JPG",
+        sourceText:"使用完廁所請留意地上、馬桶蓋有無經血、尿液；大號或經期，請您臨走前檢查是否留下痕跡。",
+        location:"廁所牆面",
+        title:"離開前一分鐘清淨",
+        body:"使用後請檢查地面、馬桶座與周邊是否清潔；若有痕跡，請即時整理。",
+        footer:"方便他人，就是培福。",
+        note:"建議貼於視線高度，字級不宜過小。"
+      },
+      {
+        id:"N005",
+        type:"告示型",
+        status:"待現場確認",
+        priority:"中",
+        source:"標籤製作/IMG_0489.JPG; IMG_0490.JPG",
+        sourceText:"衛生棉請捲起包好再丟垃圾桶；請將使用過的衛生紙丟入垃圾桶，但沾有經血或糞便之衛生紙請直接丟入馬桶內沖走。",
+        location:"廁所牆面/垃圾桶旁",
+        title:"衛生用品處理提醒",
+        body:"使用後請包妥再投入垃圾桶。一般衛生紙請投入垃圾桶；沾有污物者請依現場規範處理，避免異味與阻塞。",
+        footer:"保持廁間清潔，讓下一位安心使用。",
+        note:"需現場確認馬桶管線規範，避免與管委或建物規定衝突。"
+      },
+      {
+        id:"N006",
+        type:"告示型",
+        status:"可印製",
+        priority:"中",
+        source:"02_公共走廊與房間環境/IMG_0438.JPG; IMG_0439.JPG; IMG_0447.JPG",
+        sourceText:"緊急出口、消防設備相關標示。",
+        location:"走廊/入口",
+        title:"通道與安全設備請保持淨空",
+        body:"走廊、緊急出口與消防設備前請勿放置物品，讓通行與緊急使用都保有空間。",
+        footer:"清楚的通道，就是安全的照顧。",
+        note:"安全告示不可被櫃體、行李或暫放物遮擋。"
+      },
+      {
+        id:"M001",
+        type:"管理型",
+        status:"待現場確認",
+        priority:"高",
+        source:"06_文件與個人物品/IMG_0415.JPG",
+        sourceText:"床墊套：約29件、14件、40件；枕頭套：約33條；棉被套：5件、1件、1件。",
+        location:"寢具收納區/盤點紙轉資料表",
+        title:"床墊套/枕套/棉被套",
+        body:"品項：床墊套、枕套、棉被套\n單位：件/條\n現有量：待現場複核\n最低保留：依45人住宿基準設定",
+        footer:"清點後請更新試算表並撤除手寫紙。",
+        note:"此為原始數量資料，需轉成正式庫存欄位。"
+      },
+      {
+        id:"M002",
+        type:"管理型",
+        status:"待現場確認",
+        priority:"中",
+        source:"03_寢具與櫃內收納/IMG_0418.JPG",
+        sourceText:"衣架；疑似146支。",
+        location:"衣架櫃",
+        title:"衣架",
+        body:"品項：衣架\n單位：支\n現有量：146支待確認\n借出/歸還：請登記",
+        footer:"低於安全量請回報補充。",
+        note:"可加 QR Code 對應庫存頁。"
+      },
+      {
+        id:"M003",
+        type:"管理型",
+        status:"待現場確認",
+        priority:"高",
+        source:"03_寢具與櫃內收納/IMG_0420.JPG",
+        sourceText:"疑似床墊套46件。",
+        location:"黃色床墊套/大型布品櫃",
+        title:"黃色床墊套",
+        body:"品項：黃色床墊套\n單位：件\n現有量：46件待確認\n狀態：洗淨疊放",
+        footer:"取用後請登記數量。",
+        note:"照片估計不作正式庫存，需現場逐件清點。"
+      },
+      {
+        id:"M004",
+        type:"管理型",
+        status:"可印製",
+        priority:"高",
+        source:"03_寢具與櫃內收納/IMG_0430.JPG; IMG_0431.JPG; IMG_0432.JPG; IMG_0433.JPG",
+        sourceText:"蒲團、方墊。",
+        location:"蒲團/方墊櫃",
+        title:"蒲團/方墊",
+        body:"品項：蒲團/方墊\n用途：活動借用與日常備品\n規則：用畢清潔後歸位",
+        footer:"活動借用需登記。",
+        note:"適合櫃外貼總標，櫃內貼格位標籤。"
+      },
+      {
+        id:"M005",
+        type:"管理型",
+        status:"待現場確認",
+        priority:"中",
+        source:"03_寢具與櫃內收納/IMG_0434.JPG",
+        sourceText:"矮櫃6、毛巾及手寫日期/數量字樣。",
+        location:"毛巾櫃",
+        title:"毛巾",
+        body:"品項：毛巾\n單位：條\n狀態：洗淨可用\n清洗日期：____\n現有量：____",
+        footer:"用畢請清洗晾乾後歸回原櫃。",
+        note:"建議加乾淨/待洗兩區，避免混放。"
+      },
+      {
+        id:"M006",
+        type:"管理型",
+        status:"可印製",
+        priority:"中",
+        source:"04_衛浴清潔與耗材/IMG_0429.JPG",
+        sourceText:"衛生紙。",
+        location:"衛浴耗材櫃",
+        title:"衛生紙",
+        body:"品項：衛生紙\n單位：包/卷\n最低保留：____\n低於安全量請回報大寮法師",
+        footer:"耗材補充以最低安全量管理。",
+        note:"補貨門檻需由現場決定。"
+      }
+    ];
+
+    const storageKey = "ddm-signage-preview-v1";
+    const $ = (id) => document.getElementById(id);
+    const palette = [
+      ["#f4efe7","柔白"],
+      ["#fffdf9","素紙米白"],
+      ["#2f2a25","墨茶"],
+      ["#405f50","法鼓茶綠"],
+      ["#a88652","亞麻古金"],
+      ["#70675f","石壁灰"],
+      ["#b96f3e","暖琥珀"]
+    ];
+    const bgGroups = [
+      ["茶黑", [
+        ["#1f1d1b","莊嚴墨黑"],
+        ["#2f2a25","沉穩茶黑"],
+        ["#3e3a35","暖古茶灰"],
+        ["#4a443d","淺茶黑"]
+      ]],
+      ["法鼓茶綠", [
+        ["#2f4a3d","深茶綠"],
+        ["#405f50","法鼓茶綠"],
+        ["#6f8778","中淺茶綠"],
+        ["#eaf0ec","淺茶綠"]
+      ]],
+      ["古金", [
+        ["#76562b","深古金"],
+        ["#a88652","亞麻古金"],
+        ["#d4c09a","淺古金"],
+        ["#f6efe3","古金淡紙"]
+      ]],
+      ["素紙", [
+        ["#fffdf9","素紙米白"],
+        ["#f7f4ee","溫潤紙色"],
+        ["#efebe5","淡石紙灰"],
+        ["#ded4c8","素紙陰影"]
+      ]],
+      ["暖灰", [
+        ["#514b45","深暖灰"],
+        ["#70675f","石壁灰"],
+        ["#9b9288","中暖灰"],
+        ["#c9c0b5","淺暖灰"]
+      ]]
+    ];
+    const fontOptions = [
+      ['"Noto Serif TC","PMingLiU",serif',"明體/典雅"],
+      ['system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif',"黑體/清楚"],
+      ['"Microsoft JhengHei","Noto Sans TC",sans-serif',"微軟正黑"],
+      ['"PMingLiU","Noto Serif TC",serif',"傳統明體"]
+    ];
+    const defaultDesign = {
+      bg:"#2f2a25",
+      size:"1240x860",
+      border:"soft",
+      printPreset:"841x594",
+      printWidth:841,
+      printHeight:594,
+      printAlign:"center",
+      titleFont:'"Noto Serif TC","PMingLiU",serif',
+      titleSize:36,
+      titleColor:"#f4efe7",
+      titleAlign:"left",
+      bodyFont:'system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif',
+      bodySize:25,
+      bodyColor:"#f4efe7",
+      bodyAlign:"left",
+      footerFont:'system-ui,-apple-system,"Microsoft JhengHei","Noto Sans TC",sans-serif',
+      footerSize:20,
+      footerColor:"#a88652",
+      footerAlign:"left",
+      footerValign:"flex-start",
+      elements:[]
+    };
+    let selectedElementId = "";
+
+    function fillDesignOptions() {
+      $("bgInput").innerHTML = bgGroups.map(([group, colors]) => `
+        <optgroup label="${group}">
+          ${colors.map(([value,label]) => `<option value="${value}">${label} ${value}</option>`).join("")}
+        </optgroup>
+      `).join("") + `<option value="custom">自訂色</option>`;
+      ["titleColorInput","bodyColorInput","footerColorInput","elementColorInput"].forEach((id) => {
+        $(id).innerHTML = palette.map(([value,label]) => `<option value="${value}">${label}</option>`).join("");
+      });
+      ["titleFontInput","bodyFontInput","footerFontInput"].forEach((id) => {
+        $(id).innerHTML = fontOptions.map(([value,label]) => `<option value='${value}'>${label}</option>`).join("");
+      });
+    }
+
+    function ensureDesign(item) {
+      if (!item.design) item.design = {};
+      item.design = { ...defaultDesign, ...item.design };
+      if (item.design.printPreset === "180x125") {
+        item.design.printPreset = "297x210";
+        item.design.printWidth = 297;
+        item.design.printHeight = 210;
+      }
+      if (item.design.printPreset === "125x180") {
+        item.design.printPreset = "210x297";
+        item.design.printWidth = 210;
+        item.design.printHeight = 297;
+      }
+      if (item.design.footerValign === "start") item.design.footerValign = "flex-start";
+      if (item.design.footerValign === "end") item.design.footerValign = "flex-end";
+      if (!Array.isArray(item.design.elements)) item.design.elements = [];
+      item.design.elements = item.design.elements.filter((element) => element.kind === "image" || element.kind === "line");
+      return item.design;
+    }
+
+    let data = loadData();
+    let selectedId = data[0]?.id || "";
+    let typeFilter = "全部";
+
+    function loadData() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+        return (Array.isArray(saved) && saved.length ? saved : structuredClone(defaults)).map((item) => {
+          ensureDesign(item);
+          return item;
+        });
+      } catch {
+        return structuredClone(defaults).map((item) => {
+          ensureDesign(item);
+          return item;
+        });
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem(storageKey, JSON.stringify(data));
+    }
+
+    function current() {
+      return data.find((item) => item.id === selectedId) || data[0];
+    }
+
+    function toneClass(type) {
+      if (type === "管理型") return "manage";
+      if (type === "待確認") return "review";
+      return "notice";
+    }
+
+    function borderColor(kind) {
+      if (kind === "gold") return "#a88652";
+      if (kind === "green") return "#405f50";
+      if (kind === "none") return "transparent";
+      return "rgba(168,134,82,.35)";
+    }
+
+    function isPresetBg(color) {
+      return bgGroups.some(([, colors]) => colors.some(([value]) => value.toLowerCase() === String(color).toLowerCase()));
+    }
+
+    function normalizeHexColor(color, fallback = "#2f2a25") {
+      const value = String(color || "").trim();
+      if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+      return fallback;
+    }
+
+    function applyPrintPresetToInputs() {
+      const preset = $("printPresetInput").value;
+      if (preset === "custom") return;
+      const [width, height] = preset.split("x").map(Number);
+      $("printWidthInput").value = width;
+      $("printHeightInput").value = height;
+      const matchingImageSize = {
+        "148x100":"1748x1181",
+        "100x148":"1181x1748",
+        "297x210":"3508x2480",
+        "210x297":"2480x3508",
+        "210x148":"2480x1748",
+        "148x210":"1748x2480",
+        "257x182":"3035x2150",
+        "182x257":"2150x3035",
+        "148x105":"1748x1240",
+        "105x148":"1240x1748"
+      }[preset];
+      if (matchingImageSize) $("sizeInput").value = matchingImageSize;
+    }
+
+    function printJustify(align) {
+      if (align === "left") return "flex-start";
+      if (align === "right") return "flex-end";
+      return "center";
+    }
+
+    function paragraphJustify(align) {
+      if (align === "center") return "center";
+      if (align === "right") return "flex-end";
+      return "flex-start";
+    }
+
+    function updatePrintVars() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      document.documentElement.style.setProperty("--print-width", `${design.printWidth}mm`);
+      document.documentElement.style.setProperty("--print-height", `${design.printHeight}mm`);
+      document.documentElement.style.setProperty("--print-justify", printJustify(design.printAlign));
+    }
+
+    function updatePrintPageStyle() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      const shortEdge = Math.min(design.printWidth, design.printHeight);
+      const scale = Math.sqrt(shortEdge / 100);
+      const pxToMm = .264583;
+      const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+      const printPadding = clamp(shortEdge * .075, 6, 42);
+      const printGap = clamp(shortEdge * .035, 3, 18);
+      const printTitleSize = clamp(design.titleSize * pxToMm * scale, 6, 32);
+      const printBodySize = clamp(design.bodySize * pxToMm * scale, 4, 21);
+      const printFooterSize = clamp(design.footerSize * pxToMm * scale, 3.2, 15);
+      let style = $("dynamicPrintStyle");
+      if (!style) {
+        style = document.createElement("style");
+        style.id = "dynamicPrintStyle";
+        document.head.appendChild(style);
+      }
+      style.textContent = `
+        @page {
+          size:${design.printWidth}mm ${design.printHeight}mm;
+          margin:0;
+        }
+        @media print {
+          body { margin:0; }
+          .sign {
+            width:${design.printWidth}mm !important;
+            height:${design.printHeight}mm !important;
+            padding:${printPadding}mm !important;
+            gap:${printGap}mm !important;
+            border-radius:0 !important;
+          }
+          .sign h3 { font-size:${printTitleSize}mm !important; }
+          .sign-body { font-size:${printBodySize}mm !important; }
+          .sign-foot {
+            font-size:${printFooterSize}mm !important;
+            padding-top:${Math.max(printGap * .55, 2)}mm !important;
+          }
+        }
+      `;
+    }
+
+    function printWithCurrentSize() {
+      updatePrintVars();
+      updatePrintPageStyle();
+      window.print();
+    }
+
+    function labelClass(type) {
+      if (type === "管理型") return "manage";
+      if (type === "待確認") return "review";
+      return "notice";
+    }
+
+    function esc(value) {
+      return String(value ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+    }
+
+    function visibleItems() {
+      const q = $("searchBox").value.trim().toLowerCase();
+      const status = $("statusFilter").value;
+      return data.filter((item) => {
+        const text = [item.id,item.type,item.status,item.source,item.sourceText,item.location,item.title,item.body,item.note].join(" ").toLowerCase();
+        return (typeFilter === "全部" || item.type === typeFilter)
+          && (status === "全部" || item.status === status)
+          && (!q || text.includes(q));
+      });
+    }
+
+    function renderStats() {
+      $("totalCount").textContent = data.length;
+      $("noticeCount").textContent = data.filter((item) => item.type === "告示型").length;
+      $("manageCount").textContent = data.filter((item) => item.type === "管理型").length;
+      $("reviewCount").textContent = data.filter((item) => item.status === "待現場確認" || item.status === "草稿").length;
+    }
+
+    function renderList() {
+      const items = visibleItems();
+      $("itemList").innerHTML = items.length ? items.map((item) => `
+        <button class="item ${item.id === selectedId ? "active" : ""}" type="button" data-id="${esc(item.id)}">
+          <span class="item-title">
+            <strong>${esc(item.id)} ${esc(item.title)}</strong>
+            <span class="badge ${labelClass(item.type)}">${esc(item.type)}</span>
+          </span>
+          <span class="meta">${esc(item.location)}｜${esc(item.status)}｜優先度：${esc(item.priority)}</span>
+          <span class="meta">${esc(item.source)}</span>
+        </button>
+      `).join("") : `<div class="meta" style="padding:10px">沒有符合篩選的項目。</div>`;
+      document.querySelectorAll(".item").forEach((btn) => btn.addEventListener("click", () => {
+        selectedId = btn.dataset.id;
+        render();
+      }));
+    }
+
+    function renderEditor() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      $("typeInput").value = item.type;
+      $("statusInput").value = item.status;
+      $("locationInput").value = item.location;
+      $("priorityInput").value = item.priority;
+      $("titleInput").value = item.title;
+      $("bodyInput").value = item.body;
+      $("footerInput").value = item.footer;
+      $("noteInput").value = item.note;
+      $("bgInput").value = isPresetBg(design.bg) ? design.bg : "custom";
+      $("bgCustomInput").value = normalizeHexColor(design.bg);
+      $("sizeInput").value = design.size;
+      $("borderInput").value = design.border;
+      $("printPresetInput").value = design.printPreset;
+      $("printWidthInput").value = design.printWidth;
+      $("printHeightInput").value = design.printHeight;
+      $("printAlignInput").value = design.printAlign;
+      $("titleFontInput").value = design.titleFont;
+      $("titleSizeInput").value = design.titleSize;
+      $("titleColorInput").value = design.titleColor;
+      $("titleAlignInput").value = design.titleAlign;
+      $("bodyFontInput").value = design.bodyFont;
+      $("bodySizeInput").value = design.bodySize;
+      $("bodyColorInput").value = design.bodyColor;
+      $("bodyAlignInput").value = design.bodyAlign;
+      $("footerFontInput").value = design.footerFont;
+      $("footerSizeInput").value = design.footerSize;
+      $("footerColorInput").value = design.footerColor;
+      $("footerAlignInput").value = design.footerAlign;
+      const selectedElement = design.elements.find((element) => element.id === selectedElementId) || design.elements[0];
+      selectedElementId = selectedElement?.id || "";
+      $("elementSizeInput").value = selectedElement?.size || 120;
+      $("elementColorInput").value = selectedElement?.color || "#a88652";
+      $("elementOpacityInput").value = selectedElement?.opacity || .45;
+    }
+
+    function renderElements(design) {
+      $("previewElements").innerHTML = "";
+      return;
+      $("previewElements").innerHTML = design.elements.map((element) => {
+        const common = `style="left:${element.x}%;top:${element.y}%;width:${element.size}px;height:${element.kind === "line" ? 2 : element.size}px;color:${esc(element.color)};opacity:${element.opacity ?? .45}"`;
+        const selected = element.id === selectedElementId ? " selected" : "";
+        if (element.kind === "image") {
+          return `<div class="design-element image${selected}" data-element-id="${esc(element.id)}" ${common}><img src="${esc(element.src)}" alt=""></div>`;
+        }
+        return `<div class="design-element line${selected}" data-element-id="${esc(element.id)}" ${common}></div>`;
+      }).join("");
+      document.querySelectorAll(".design-element").forEach((node) => {
+        node.addEventListener("pointerdown", startElementDrag);
+      });
+    }
+
+    function renderPreview() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      const preview = $("signPreview");
+      preview.className = `sign ${toneClass(item.type)}`;
+      preview.style.background = design.bg;
+      preview.style.borderColor = borderColor(design.border);
+      preview.style.setProperty("--title-font", design.titleFont);
+      preview.style.setProperty("--title-size", `${design.titleSize}px`);
+      preview.style.setProperty("--title-color", design.titleColor);
+      preview.style.setProperty("--title-align", design.titleAlign);
+      preview.style.setProperty("--title-last-align", design.titleAlign === "justify" ? "justify" : "auto");
+      preview.style.setProperty("--body-font", design.bodyFont);
+      preview.style.setProperty("--body-size", `${design.bodySize}px`);
+      preview.style.setProperty("--body-color", design.bodyColor);
+      preview.style.setProperty("--body-align", design.bodyAlign);
+      preview.style.setProperty("--body-last-align", design.bodyAlign === "justify" ? "justify" : "auto");
+      preview.style.setProperty("--body-justify", paragraphJustify(design.bodyAlign));
+      preview.style.setProperty("--footer-font", design.footerFont);
+      preview.style.setProperty("--footer-size", `${design.footerSize}px`);
+      preview.style.setProperty("--footer-color", design.footerColor);
+      preview.style.setProperty("--footer-align", design.footerAlign);
+      preview.style.setProperty("--footer-last-align", design.footerAlign === "justify" ? "justify" : "auto");
+      preview.style.setProperty("--footer-justify", paragraphJustify(design.footerAlign));
+      preview.style.setProperty("--footer-valign", design.footerValign);
+      renderElements(design);
+      $("previewKicker").textContent = `${item.type}｜${item.status}｜優先度 ${item.priority}`;
+      $("previewTitle").textContent = item.title || "未命名標語";
+      $("previewBody").textContent = item.body || "尚未填寫正式文案";
+      $("previewFooter").textContent = item.footer || item.location || "";
+      $("sourceText").innerHTML = `後台分類：${esc(item.type)}｜${esc(item.status)}｜優先度 ${esc(item.priority)}<br>來源：${esc(item.source)}<br>位置：${esc(item.location)}<br>原文：${esc(item.sourceText)}`;
+    }
+
+    function renderSummary() {
+      const rows = data.map((item) => `
+        <tr>
+          <td>${esc(item.id)}</td>
+          <td>${esc(item.type)}</td>
+          <td>${esc(item.status)}</td>
+          <td>${esc(item.priority)}</td>
+          <td>${esc(item.location)}</td>
+          <td>${esc(item.title)}</td>
+          <td>${esc(item.note)}</td>
+        </tr>
+      `).join("");
+      $("summaryTable").innerHTML = `
+        <thead><tr><th>ID</th><th>分類</th><th>狀態</th><th>優先</th><th>位置</th><th>標題</th><th>備註</th></tr></thead>
+        <tbody>${rows}</tbody>
+      `;
+    }
+
+    function renderFormatOptions() {
+      const item = current();
+      $("formatSourceInput").innerHTML = data.map((entry) => `
+        <option value="${esc(entry.id)}"${entry.id === item?.id ? " selected" : ""}>${esc(entry.id)} ${esc(entry.title || "未命名標語")}</option>
+      `).join("");
+    }
+
+    function renderFilters() {
+      document.querySelectorAll(".seg button").forEach((btn) => btn.classList.toggle("active", btn.dataset.filter === typeFilter));
+    }
+
+    function renderListToggle() {
+      $("toggleList").textContent = document.body.classList.contains("list-hidden") ? "顯示標語清單" : "隱藏標語清單";
+    }
+
+    function render() {
+      renderStats();
+      renderFilters();
+      renderList();
+      renderEditor();
+      renderPreview();
+      updatePrintVars();
+      renderSummary();
+      renderFormatOptions();
+      renderListToggle();
+    }
+
+    function applyEditorToCurrent() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      item.type = $("typeInput").value;
+      item.status = $("statusInput").value;
+      item.location = $("locationInput").value;
+      item.priority = $("priorityInput").value;
+      item.title = $("titleInput").value;
+      item.body = $("bodyInput").value;
+      item.footer = $("footerInput").value;
+      item.note = $("noteInput").value;
+      design.bg = $("bgInput").value === "custom" ? $("bgCustomInput").value : $("bgInput").value;
+      design.size = $("sizeInput").value;
+      design.border = $("borderInput").value;
+      design.printPreset = $("printPresetInput").value;
+      design.printWidth = Number($("printWidthInput").value || defaultDesign.printWidth);
+      design.printHeight = Number($("printHeightInput").value || defaultDesign.printHeight);
+      design.printAlign = $("printAlignInput").value;
+      design.titleFont = $("titleFontInput").value;
+      design.titleSize = Number($("titleSizeInput").value || defaultDesign.titleSize);
+      design.titleColor = $("titleColorInput").value;
+      design.titleAlign = $("titleAlignInput").value;
+      design.bodyFont = $("bodyFontInput").value;
+      design.bodySize = Number($("bodySizeInput").value || defaultDesign.bodySize);
+      design.bodyColor = $("bodyColorInput").value;
+      design.bodyAlign = $("bodyAlignInput").value;
+      design.footerFont = $("footerFontInput").value;
+      design.footerSize = Number($("footerSizeInput").value || defaultDesign.footerSize);
+      design.footerColor = $("footerColorInput").value;
+      design.footerAlign = $("footerAlignInput").value;
+      const selectedElement = design.elements.find((element) => element.id === selectedElementId);
+      if (selectedElement) {
+        selectedElement.size = Number($("elementSizeInput").value || selectedElement.size || 120);
+        selectedElement.color = $("elementColorInput").value;
+        selectedElement.opacity = Number($("elementOpacityInput").value || selectedElement.opacity || .45);
+      }
+      saveData();
+      renderPreview();
+      updatePrintVars();
+      renderStats();
+      renderSummary();
+      renderList();
+      renderFormatOptions();
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? "");
+      return /[",\n]/.test(text) ? `"${text.replaceAll('"','""')}"` : text;
+    }
+
+    function download(name, text, type) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type }));
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function canvasFont(fontFamily, size, weight = 400) {
+      return `${weight} ${size}px ${fontFamily}`;
+    }
+
+    function imageSizeFromDesign(design) {
+      const [width, height] = String(design.size || defaultDesign.size).split("x").map(Number);
+      return {
+        width: Number.isFinite(width) && width > 0 ? width : 1240,
+        height: Number.isFinite(height) && height > 0 ? height : 860
+      };
+    }
+
+    function roundedRect(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + width, y, x + width, y + height, r);
+      ctx.arcTo(x + width, y + height, x, y + height, r);
+      ctx.arcTo(x, y + height, x, y, r);
+      ctx.arcTo(x, y, x + width, y, r);
+      ctx.closePath();
+    }
+
+    function wrapLines(ctx, text, maxWidth) {
+      const output = [];
+      String(text || "").split("\n").forEach((paragraph) => {
+        let line = "";
+        [...paragraph].forEach((char) => {
+          const test = line + char;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            output.push(line);
+            line = char;
+          } else {
+            line = test;
+          }
+        });
+        output.push(line);
+      });
+      return output;
+    }
+
+    function drawJustifiedLine(ctx, line, x, y, maxWidth) {
+      const chars = [...line];
+      if (chars.length <= 1) {
+        ctx.fillText(line, x, y);
+        return;
+      }
+      const textWidth = ctx.measureText(line).width;
+      const gap = (maxWidth - textWidth) / (chars.length - 1);
+      let cursor = x;
+      chars.forEach((char) => {
+        ctx.fillText(char, cursor, y);
+        cursor += ctx.measureText(char).width + gap;
+      });
+    }
+
+    function drawWrapped(ctx, text, x, y, maxWidth, lineHeight, align) {
+      const lines = wrapLines(ctx, text, maxWidth);
+      lines.forEach((line, index) => {
+        const yy = y + index * lineHeight;
+        const width = ctx.measureText(line).width;
+        if (align === "center") ctx.fillText(line, x + (maxWidth - width) / 2, yy);
+        else if (align === "right") ctx.fillText(line, x + maxWidth - width, yy);
+        else if (align === "justify" && index < lines.length - 1 && line.length > 2) drawJustifiedLine(ctx, line, x, yy, maxWidth);
+        else ctx.fillText(line, x, yy);
+      });
+      return y + lines.length * lineHeight;
+    }
+
+    function textBlockMetrics(ctx, text, maxWidth, lineHeight) {
+      const lines = wrapLines(ctx, text, maxWidth);
+      return { lines, height: lines.length * lineHeight };
+    }
+
+    function drawTextBlock(ctx, options) {
+      const {
+        text, x, y, maxWidth, maxHeight, fontFamily, fontSize,
+        weight = 400, lineRatio = 1.5, align = "left", vertical = "start",
+        minFontSize = 10
+      } = options;
+      let size = fontSize;
+      let lineHeight = Math.round(size * lineRatio);
+      ctx.font = canvasFont(fontFamily, size, weight);
+      let metrics = textBlockMetrics(ctx, text, maxWidth, lineHeight);
+      while (metrics.height > maxHeight && size > minFontSize) {
+        size = Math.max(minFontSize, Math.floor(size * .94));
+        lineHeight = Math.round(size * lineRatio);
+        ctx.font = canvasFont(fontFamily, size, weight);
+        metrics = textBlockMetrics(ctx, text, maxWidth, lineHeight);
+      }
+
+      let drawY = y;
+      if (vertical === "center") drawY = y + Math.max(0, (maxHeight - metrics.height) / 2);
+      if (vertical === "end") drawY = y + Math.max(0, maxHeight - metrics.height);
+      metrics.lines.forEach((line, index) => {
+        const yy = drawY + index * lineHeight;
+        const width = ctx.measureText(line).width;
+        if (align === "center") ctx.fillText(line, x + (maxWidth - width) / 2, yy);
+        else if (align === "right") ctx.fillText(line, x + maxWidth - width, yy);
+        else if (align === "justify" && index < metrics.lines.length - 1 && line.length > 2) drawJustifiedLine(ctx, line, x, yy, maxWidth);
+        else ctx.fillText(line, x, yy);
+      });
+      return { fontSize:size, lineHeight, bottom:drawY + metrics.height };
+    }
+
+    function preloadElementImages(elements) {
+      return Promise.all(elements.filter((element) => element.kind === "image" && element.src).map((element) => new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ id:element.id, img });
+        img.onerror = () => resolve(null);
+        img.src = element.src;
+      }))).then((loaded) => Object.fromEntries(loaded.filter(Boolean).map(({ id, img }) => [id, img])));
+    }
+
+    function drawDesignElements(ctx, elements, width, height, exportRatio, loadedImages = {}) {
+      elements.forEach((element) => {
+        const x = width * (Number(element.x) || 50) / 100;
+        const y = height * (Number(element.y) || 50) / 100;
+        const size = (Number(element.size) || 120) * exportRatio;
+        ctx.save();
+        ctx.globalAlpha = Number(element.opacity ?? .45);
+        ctx.strokeStyle = element.color || "#a88652";
+        ctx.fillStyle = element.color || "#a88652";
+        ctx.lineWidth = Math.max(2 * exportRatio, 1);
+        if (element.kind === "line") {
+          ctx.beginPath();
+          ctx.moveTo(x - size / 2, y);
+          ctx.lineTo(x + size / 2, y);
+          ctx.stroke();
+        } else if (element.kind === "image" && loadedImages[element.id]) {
+          ctx.drawImage(loadedImages[element.id], x - size / 2, y - size / 2, size, size);
+        }
+        ctx.restore();
+      });
+    }
+
+    async function downloadCurrentPng() {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      if (document.fonts?.ready) await document.fonts.ready;
+      const loadedImages = await preloadElementImages([]);
+
+      const source = $("signPreview");
+      const { width, height } = imageSizeFromDesign(design);
+      const scale = 1;
+      const canvas = document.createElement("canvas");
+      canvas.width = width * scale;
+      canvas.height = height * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+
+      const styles = getComputedStyle(source);
+      const previewWidth = Math.max(source.getBoundingClientRect().width, 1);
+      const exportRatio = width / previewWidth;
+      const pad = Math.round((parseFloat(styles.paddingLeft) || 22) * exportRatio);
+      const borderWidth = parseFloat(styles.borderTopWidth) || 1;
+      const scaledBorderWidth = Math.max(Math.round(borderWidth * exportRatio), 1);
+      const radius = Math.round((parseFloat(styles.borderRadius) || 8) * exportRatio);
+      const innerX = pad;
+      const innerWidth = width - pad * 2;
+      const innerY = pad;
+      const innerHeight = height - pad * 2;
+      const gap = Math.round(Math.min(Math.max(height * .01, 5 * exportRatio), 12 * exportRatio));
+      const availableHeight = innerHeight - gap * 2;
+      const titleZoneHeight = Math.round(availableHeight * .17);
+      const bodyZoneHeight = Math.round(availableHeight * .70);
+      const footerZoneHeight = availableHeight - titleZoneHeight - bodyZoneHeight;
+      const titleY = innerY;
+      const bodyY = titleY + titleZoneHeight + gap;
+      const footerY = bodyY + bodyZoneHeight + gap;
+
+      ctx.fillStyle = design.bg;
+      roundedRect(ctx, 0, 0, width, height, radius);
+      ctx.fill();
+      if (design.border !== "none" && scaledBorderWidth > 0) {
+        ctx.strokeStyle = borderColor(design.border);
+        ctx.lineWidth = scaledBorderWidth;
+        roundedRect(ctx, scaledBorderWidth / 2, scaledBorderWidth / 2, width - scaledBorderWidth, height - scaledBorderWidth, radius);
+        ctx.stroke();
+      }
+      drawDesignElements(ctx, [], width, height, exportRatio, loadedImages);
+
+      ctx.textBaseline = "top";
+      ctx.fillStyle = design.titleColor;
+      const titleSize = Math.round(design.titleSize * exportRatio);
+      const bodySize = Math.round(design.bodySize * exportRatio);
+      const footerSize = Math.round((Number(design.footerSize || defaultDesign.footerSize)) * exportRatio);
+      drawTextBlock(ctx, {
+        text:item.title || "未命名標語",
+        x:innerX,
+        y:titleY,
+        maxWidth:innerWidth,
+        maxHeight:titleZoneHeight,
+        fontFamily:design.titleFont,
+        fontSize:titleSize,
+        weight:700,
+        lineRatio:1.25,
+        align:design.titleAlign,
+        vertical:"end",
+        minFontSize:Math.max(14, Math.round(14 * exportRatio))
+      });
+
+      ctx.fillStyle = design.bodyColor;
+      drawTextBlock(ctx, {
+        text:item.body || "",
+        x:innerX,
+        y:bodyY,
+        maxWidth:innerWidth,
+        maxHeight:bodyZoneHeight,
+        fontFamily:design.bodyFont,
+        fontSize:bodySize,
+        weight:400,
+        lineRatio:1.75,
+        align:design.bodyAlign,
+        vertical:"center",
+        minFontSize:Math.max(11, Math.round(11 * exportRatio))
+      });
+
+      if (item.footer) {
+        const lineY = footerY;
+        ctx.strokeStyle = borderColor(design.border === "none" ? "soft" : design.border);
+        ctx.lineWidth = Math.max(Math.round(exportRatio), 1);
+        ctx.beginPath();
+        ctx.moveTo(innerX, lineY);
+        ctx.lineTo(width - innerX, lineY);
+        ctx.stroke();
+        ctx.fillStyle = design.footerColor;
+        drawTextBlock(ctx, {
+          text:item.footer,
+          x:innerX,
+          y:lineY + Math.round(12 * exportRatio),
+          maxWidth:innerWidth,
+          maxHeight:Math.max(footerZoneHeight - Math.round(12 * exportRatio), footerSize * 1.5),
+          fontFamily:design.footerFont,
+          fontSize:footerSize,
+          weight:500,
+        lineRatio:1.45,
+        align:design.footerAlign,
+          vertical:design.footerValign === "center" ? "center" : design.footerValign === "flex-end" ? "end" : "start",
+          minFontSize:Math.max(9, Math.round(9 * exportRatio))
+        });
+      }
+
+      canvas.toBlob((blob) => {
+        const a = document.createElement("a");
+        const safeName = `${item.id}_${item.title || "標語"}`.replace(/[\\/:*?"<>|]/g, "_");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${safeName}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }, "image/png");
+    }
+
+    function buildCsv() {
+      const headers = ["id","分類","狀態","優先度","照片來源","原文","張貼位置","第一段標題","第二段內文","第三段提醒","底色","圖檔尺寸","邊框","標題字型","標題字級","標題顏色","標題排版","內文字型","內文字級","內文顏色","內文排版","提醒字型","提醒字級","提醒顏色","提醒排版","修正備註"];
+      const rows = data.map((item) => {
+        const design = ensureDesign(item);
+        return [item.id,item.type,item.status,item.priority,item.source,item.sourceText,item.location,item.title,item.body,item.footer,design.bg,design.size,design.border,design.titleFont,design.titleSize,design.titleColor,design.titleAlign,design.bodyFont,design.bodySize,design.bodyColor,design.bodyAlign,design.footerFont,design.footerSize,design.footerColor,design.footerAlign,item.note];
+      });
+      return "\uFEFF" + [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\r\n");
+    }
+
+    function buildMarkdown() {
+      const lines = ["# 香積室住宿區環境標語修正清單", "", `更新時間：${new Date().toLocaleString("zh-TW")}`, ""];
+      data.forEach((item) => {
+        lines.push(`## ${item.id} ${item.title}`);
+        lines.push("");
+        lines.push(`- 分類：${item.type}`);
+        lines.push(`- 狀態：${item.status}`);
+        lines.push(`- 優先度：${item.priority}`);
+        lines.push(`- 張貼位置：${item.location}`);
+        lines.push(`- 照片來源：${item.source}`);
+        const design = ensureDesign(item);
+        lines.push(`- 圖檔設計：底色 ${design.bg}，尺寸 ${design.size}，邊框 ${design.border}`);
+        lines.push(`- 段落排版：標題 ${design.titleAlign}，內文 ${design.bodyAlign}，提醒 ${design.footerAlign}`);
+        lines.push(`- 現場原文：${item.sourceText}`);
+        lines.push("");
+        lines.push("第一段：");
+        lines.push("");
+        lines.push(item.title);
+        lines.push("");
+        lines.push("第二段：");
+        lines.push("");
+        lines.push(item.body);
+        if (item.footer) {
+          lines.push("");
+          lines.push("第三段：");
+          lines.push("");
+          lines.push(item.footer);
+        }
+        if (item.note) {
+          lines.push("");
+          lines.push(`修正備註：${item.note}`);
+        }
+        lines.push("");
+      });
+      return lines.join("\n");
+    }
+
+    function addElement(kind, src = "") {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      const element = {
+        id:`E${Date.now()}`,
+        kind,
+        x:kind === "corner" ? 12 : 78,
+        y:kind === "corner" ? 12 : 82,
+        size:kind === "line" ? 220 : 96,
+        color:"#a88652",
+        opacity:kind === "image" ? .8 : .42,
+        src
+      };
+      design.elements.push(element);
+      selectedElementId = element.id;
+      saveData();
+      render();
+    }
+
+    function removeSelectedElement() {
+      const item = current();
+      if (!item || !selectedElementId) return;
+      const design = ensureDesign(item);
+      design.elements = design.elements.filter((element) => element.id !== selectedElementId);
+      selectedElementId = design.elements[0]?.id || "";
+      saveData();
+      render();
+    }
+
+    function startElementDrag(event) {
+      const item = current();
+      if (!item) return;
+      const design = ensureDesign(item);
+      const element = design.elements.find((entry) => entry.id === event.currentTarget.dataset.elementId);
+      if (!element) return;
+      event.preventDefault();
+      selectedElementId = element.id;
+      renderEditor();
+      const node = event.currentTarget;
+      node.classList.add("selected");
+      node.setPointerCapture?.(event.pointerId);
+      const rect = $("signPreview").getBoundingClientRect();
+      const move = (moveEvent) => {
+        element.x = Math.min(Math.max(((moveEvent.clientX - rect.left) / rect.width) * 100, 0), 100);
+        element.y = Math.min(Math.max(((moveEvent.clientY - rect.top) / rect.height) * 100, 0), 100);
+        node.style.left = `${element.x}%`;
+        node.style.top = `${element.y}%`;
+      };
+      const end = () => {
+        saveData();
+        renderPreview();
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", end);
+      };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", end);
+    }
+
+    function createNewItem() {
+      const next = data.length + 1;
+      const item = {
+        id:`NEW${String(next).padStart(3, "0")}`,
+        type:"告示型",
+        status:"草稿",
+        priority:"中",
+        source:"手動新增",
+        sourceText:"",
+        location:"",
+        title:"新標語",
+        body:"請輸入正式文案。",
+        footer:"感恩護持清淨道場。",
+        note:""
+      };
+      ensureDesign(item);
+      data.push(item);
+      selectedId = item.id;
+      selectedElementId = "";
+      saveData();
+      render();
+    }
+
+    function restoreFromJsonFile(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(reader.result);
+          const imported = Array.isArray(parsed) ? parsed : parsed.data;
+          if (!Array.isArray(imported) || !imported.length) throw new Error("Invalid backup");
+          data = imported.map((item) => {
+            ensureDesign(item);
+            return item;
+          });
+          selectedId = data[0]?.id || "";
+          selectedElementId = "";
+          saveData();
+          render();
+          alert("備份已匯入。");
+        } catch {
+          alert("無法匯入，請確認是本工具匯出的 JSON 備份。");
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    async function pickBackgroundColor() {
+      if (!window.EyeDropper) {
+        alert("此瀏覽器尚未支援吸管取色，請先用「微調色」色盤選擇。");
+        return;
+      }
+      try {
+        const result = await new EyeDropper().open();
+        $("bgInput").value = "custom";
+        $("bgCustomInput").value = result.sRGBHex;
+        applyEditorToCurrent();
+      } catch {
+        // 使用者取消取色時不需提示。
+      }
+    }
+
+    function copyFormatToCurrent() {
+      const target = current();
+      const source = data.find((item) => item.id === $("formatSourceInput").value);
+      if (!target || !source || target.id === source.id) return;
+      const targetDesign = ensureDesign(target);
+      const sourceDesign = structuredClone(ensureDesign(source));
+      const scope = $("formatScopeInput").value;
+      const textKeys = ["titleFont","titleSize","titleColor","titleAlign","bodyFont","bodySize","bodyColor","bodyAlign","footerFont","footerSize","footerColor","footerAlign"];
+      const surfaceKeys = ["bg","size","border"];
+      const printKeys = ["printPreset","printWidth","printHeight","printAlign"];
+      const keys = scope === "text" ? textKeys
+        : scope === "surface" ? surfaceKeys
+        : scope === "print" ? printKeys
+        : [...surfaceKeys, ...printKeys, ...textKeys];
+      keys.forEach((key) => {
+        targetDesign[key] = sourceDesign[key];
+      });
+      saveData();
+      render();
+    }
+
+    function deleteCurrentItem() {
+      const item = current();
+      if (!item) return;
+      if (data.length <= 1) {
+        alert("至少需要保留一筆標語。");
+        return;
+      }
+      const ok = confirm(`確定刪除「${item.id} ${item.title || "未命名標語"}」？`);
+      if (!ok) return;
+      const index = data.findIndex((entry) => entry.id === item.id);
+      data.splice(index, 1);
+      selectedId = data[Math.max(0, index - 1)]?.id || data[0]?.id || "";
+      selectedElementId = "";
+      saveData();
+      render();
+    }
+
+    document.querySelectorAll(".seg button").forEach((btn) => btn.addEventListener("click", () => {
+      typeFilter = btn.dataset.filter;
+      render();
+    }));
+    $("searchBox").addEventListener("input", renderList);
+    $("statusFilter").addEventListener("change", renderList);
+    $("bgInput").addEventListener("change", () => {
+      if ($("bgInput").value !== "custom") $("bgCustomInput").value = $("bgInput").value;
+    });
+    $("bgCustomInput").addEventListener("input", () => {
+      $("bgInput").value = "custom";
+    });
+    $("printPresetInput").addEventListener("change", () => {
+      applyPrintPresetToInputs();
+      applyEditorToCurrent();
+    });
+    ["typeInput","statusInput","locationInput","priorityInput","titleInput","bodyInput","footerInput","noteInput","bgInput","bgCustomInput","sizeInput","borderInput","printWidthInput","printHeightInput","printAlignInput","titleFontInput","titleSizeInput","titleColorInput","titleAlignInput","bodyFontInput","bodySizeInput","bodyColorInput","bodyAlignInput","footerFontInput","footerSizeInput","footerColorInput","footerAlignInput","elementSizeInput","elementColorInput","elementOpacityInput"].forEach((id) => {
+      $(id).addEventListener("input", applyEditorToCurrent);
+      $(id).addEventListener("change", applyEditorToCurrent);
+    });
+    $("bgEyedropper").addEventListener("click", pickBackgroundColor);
+    $("newItem").addEventListener("click", createNewItem);
+    $("toggleList").addEventListener("click", () => {
+      document.body.classList.toggle("list-hidden");
+      renderListToggle();
+    });
+    $("restoreJson").addEventListener("click", () => $("restoreJsonInput").click());
+    $("restoreJsonInput").addEventListener("change", (event) => restoreFromJsonFile(event.target.files[0]));
+    $("addLineElement").addEventListener("click", () => addElement("line"));
+    $("importElement").addEventListener("click", () => $("importElementInput").click());
+    $("importElementInput").addEventListener("change", (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => addElement("image", reader.result);
+      reader.readAsDataURL(file);
+      event.target.value = "";
+    });
+    $("removeElement").addEventListener("click", removeSelectedElement);
+    $("saveItem").addEventListener("click", applyEditorToCurrent);
+    $("applyFormat").addEventListener("click", copyFormatToCurrent);
+    $("deleteItem").addEventListener("click", deleteCurrentItem);
+    $("duplicateItem").addEventListener("click", () => {
+      const item = current();
+      const clone = structuredClone(item);
+      clone.id = `${item.id}-副本`;
+      clone.status = "草稿";
+      clone.note = `${clone.note}\n由 ${item.id} 複製。`.trim();
+      data.push(clone);
+      selectedId = clone.id;
+      saveData();
+      render();
+    });
+    $("resetItem").addEventListener("click", () => {
+      const original = defaults.find((item) => item.id === selectedId);
+      if (!original) return;
+      const index = data.findIndex((item) => item.id === selectedId);
+      data[index] = structuredClone(original);
+      saveData();
+      render();
+    });
+    $("exportPng").addEventListener("click", downloadCurrentPng);
+    $("exportCsv").addEventListener("click", () => download("環境標語修正清單.csv", buildCsv(), "text/csv;charset=utf-8"));
+    $("exportMarkdown").addEventListener("click", () => download("環境標語修正清單.md", buildMarkdown(), "text/markdown;charset=utf-8"));
+    $("backupJson").addEventListener("click", () => download("環境標語修正工具備份.json", JSON.stringify({ savedAt:new Date().toISOString(), data }, null, 2), "application/json;charset=utf-8"));
+    $("printPage").addEventListener("click", printWithCurrentSize);
+    window.addEventListener("beforeprint", () => {
+      updatePrintVars();
+      updatePrintPageStyle();
+    });
+
+    fillDesignOptions();
+    render();
+  </script>
+</body>
+</html>
