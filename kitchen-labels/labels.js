@@ -53,7 +53,7 @@
     $('templateWarning').textContent=layout.warning; $('templateWarning').hidden=!layout.warning;
     return layout;
   }
-  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:65,align:'center',borderOn:true,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
+  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:'vertical',align:'center',borderOn:true,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
   function mmPercent(value,total){return `${value/total*100}%`;}
   function renderCell(i){
     const item=cells[i]; if(!item)return; const c=item.el,d=item.data;
@@ -66,10 +66,12 @@
     c.style.background=d?.bg||'#fff'; c.innerHTML='';
     if(!d?.image){const empty=document.createElement('div');empty.className='empty';empty.innerHTML=`${i+1}<br>選取後加入工具`;c.append(empty);return;}
     c.style.padding=`${Math.max(0,Number(d.inset)||0)/h*100}% ${Math.max(0,Number(d.inset)||0)/w*100}%`;
-    c.style.justifyContent=d.align==='top'?'flex-start':d.align==='bottom'?'flex-end':'center';
-    const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.maxHeight=`${Math.max(20,Math.min(90,Number(d.imageRatio)||65))}%`;c.append(im);
-    const name=document.createElement('strong');name.textContent=d.name;name.style.fontFamily=fonts[d.font]||fonts.serif;name.style.fontSize=`${Math.max(8,Number(d.size)||24)}pt`;name.style.color=d.color;c.append(name);
-    if(d.sub){const sub=document.createElement('small');sub.textContent=d.sub;sub.style.fontFamily=fonts[d.font]||fonts.serif;sub.style.fontSize=`${Math.max(7,(Number(d.size)||24)*.58)}pt`;sub.style.color=d.color;c.append(sub);}
+    c.classList.toggle('horizontal',d.direction==='horizontal');c.style.justifyContent=d.align==='top'?'flex-start':d.align==='bottom'?'flex-end':'center';
+    const group=document.createElement('div');group.className='cell-content';
+    const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.setProperty('--image-ratio',`${Math.max(25,Math.min(85,Number(d.imageRatio)||58))}%`);group.append(im);
+    const text=document.createElement('div');text.className='cell-text';
+    const name=document.createElement('strong');name.textContent=d.name;name.style.fontFamily=fonts[d.font]||fonts.serif;name.style.fontSize=`${Math.max(8,Number(d.size)||24)}pt`;name.style.color=d.color;text.append(name);
+    if(d.sub){const sub=document.createElement('small');sub.textContent=d.sub;sub.style.fontFamily=fonts[d.font]||fonts.serif;sub.style.fontSize=`${Math.max(7,(Number(d.size)||24)*.58)}pt`;sub.style.color=d.color;text.append(sub);}group.append(text);c.append(group);
   }
   function drawAll(){cells.forEach((_,i)=>renderCell(i));}
   function checkCellBounds(){
@@ -103,7 +105,7 @@
     const d=cells[i].data;
     $('selectedLabel').textContent=`第 ${i+1} 格`;
     $('emptyEdit').hidden=true;$('editor').hidden=false;
-    const shown=d||defaultCell();['name','sub','font','size','color','bg','imageRatio','align','borderColor','borderWidth','inset','offsetX','offsetY','widthAdjust','heightAdjust'].forEach(k=>{if($(k))$(k).value=shown[k]??defaultCell()[k];});$('borderOn').checked=shown.borderOn!==false;$('ratioValue').textContent=`${shown.imageRatio||65}%`;
+    const shown={...defaultCell(),...(d||{})};['name','sub','font','size','color','bg','imageRatio','direction','align','borderColor','borderWidth','inset','offsetX','offsetY','widthAdjust','heightAdjust'].forEach(k=>{if($(k))$(k).value=shown[k]??defaultCell()[k];});$('borderOn').checked=shown.borderOn!==false;$('ratioValue').textContent=`${shown.imageRatio||58}%`;
     updateStatus();
   }
   function useTool(tool){
@@ -142,13 +144,21 @@
       const d=item.data;if(!d)return;const col=i%layout.cols,row=Math.floor(i/layout.cols),x=(layout.x+col*(layout.cw+layout.gx)+(Number(d.offsetX)||0))*scaleX,y=(layout.y+row*(layout.ch+layout.gy)+(Number(d.offsetY)||0))*scaleY,w=Math.max(1,layout.cw+(Number(d.widthAdjust)||0))*scaleX,h=Math.max(1,layout.ch+(Number(d.heightAdjust)||0))*scaleY,pad=(Number(d.inset)||0)*scaleX;
       ctx.fillStyle=d.bg||'#f4f0e3';ctx.fillRect(x,y,w,h);
       if(d.borderOn){ctx.strokeStyle=d.borderColor||'#b8bbae';ctx.lineWidth=Math.max(1,(Number(d.borderWidth)||.2)*scaleX);ctx.setLineDash($('template').value==='custom'?[8,8]:[]);ctx.strokeRect(x+ctx.lineWidth/2,y+ctx.lineWidth/2,w-ctx.lineWidth,h-ctx.lineWidth);ctx.setLineDash([]);}
-      const image=images[i], ratio=Math.max(.2,Math.min(.9,(Number(d.imageRatio)||65)/100)), textArea=h*(1-ratio), availableH=h-textArea-pad*2;
-      if(image){const fit=Math.min((w-pad*2)*.94/image.naturalWidth,availableH*.95/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;ctx.drawImage(image,x+(w-iw)/2,y+pad+(availableH-ih)/2,iw,ih);}
-      const pt=Math.max(8,Number(d.size)||24),fontPx=pt*300/72;ctx.fillStyle=d.color||'#24332d';ctx.textAlign='center';ctx.textBaseline='middle';ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
-      const maxW=w-pad*2,lines=wrapText(ctx,d.name,maxW);const lineH=fontPx*1.15;let fitPx=fontPx;if(lines.length*lineH>textArea*.9){fitPx=Math.max(8*300/72,fontPx*(textArea*.9/(lines.length*lineH)));ctx.font=`600 ${fitPx}px ${fonts[d.font]||fonts.serif}`;}
-      const nameStart=y+h-textArea+(textArea-(lines.length*fitPx*1.15+(d.sub?fontPx*.58*1.2:0)))/2;
-      lines.forEach((line,j)=>ctx.fillText(line,x+w/2,nameStart+j*fitPx*1.15,maxW));
-      if(d.sub){ctx.font=`${Math.max(7,pt*.58)*300/72}px ${fonts[d.font]||fonts.serif}`;ctx.fillText(d.sub,x+w/2,y+h-pad-fontPx*.4,maxW);}
+      const image=images[i],pt=Math.max(8,Number(d.size)||24),fontPx=pt*300/72,innerX=x+pad,innerY=y+pad,innerW=Math.max(1,w-pad*2),innerH=Math.max(1,h-pad*2),horizontal=d.direction==='horizontal',ratio=Math.max(.25,Math.min(.85,(Number(d.imageRatio)||58)/100));
+      ctx.fillStyle=d.color||'#24332d';ctx.textBaseline='middle';ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
+      const subPx=Math.max(7,pt*.58)*300/72;
+      if(horizontal){
+        const imageW=innerW*ratio,textW=innerW-imageW,gap=Math.min(12,innerW*.025),ix=innerX+(imageW-(image?imageW*.94:0))/2;
+        if(image){const fit=Math.min(imageW*.94/image.naturalWidth,innerH*.94/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;ctx.drawImage(image,innerX+(imageW-iw)/2,innerY+(innerH-ih)/2,iw,ih);}
+        const tx=innerX+imageW+gap,availableW=Math.max(1,textW-gap),lines=wrapText(ctx,d.name,availableW),subLine=d.sub?subPx*1.2:0,total=lines.length*fontPx*1.15+subLine,startY=innerY+(innerH-total)/2;ctx.textAlign='left';
+        lines.forEach((line,j)=>ctx.fillText(line,tx,startY+fontPx*.58+j*fontPx*1.15,availableW));if(d.sub){ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`;ctx.fillText(d.sub,tx,startY+lines.length*fontPx*1.15+subPx*.55,availableW);}
+      }else{
+        const measure=ctx.measureText(d.name||'').width,subW=d.sub?(ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`,ctx.measureText(d.sub).width):0;ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
+        const textW=Math.min(innerW,Math.max(measure,subW)),fit=Math.min(1,innerW/Math.max(1,textW)),effectiveFont=fontPx*fit;ctx.font=`600 ${effectiveFont}px ${fonts[d.font]||fonts.serif}`;
+        const lines=wrapText(ctx,d.name,innerW),textH=lines.length*effectiveFont*1.12+(d.sub?subPx*1.2:0),imageH=innerH*ratio,gap=Math.min(innerH*.04,18),groupH=Math.min(innerH,imageH+gap+textH),start=innerY+(d.align==='top'?0:d.align==='bottom'?innerH-groupH:(innerH-groupH)/2);
+        if(image){const fit=Math.min(innerW*.96/image.naturalWidth,Math.max(1,imageH-gap)*.96/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;ctx.drawImage(image,innerX+(innerW-iw)/2,start+(imageH-ih)/2,iw,ih);}
+        ctx.textAlign='center';const textStart=start+imageH+gap+(textH-(lines.length*effectiveFont*1.12+(d.sub?subPx*1.2:0)))/2;lines.forEach((line,j)=>ctx.fillText(line,innerX+innerW/2,textStart+effectiveFont*.58+j*effectiveFont*1.12,innerW));if(d.sub){ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`;ctx.fillText(d.sub,innerX+innerW/2,textStart+lines.length*effectiveFont*1.12+subPx*.55,innerW);}
+      }
     });
     downloadUrl(canvas.toDataURL('image/png'),'廚房工具_A4.png');toast('A4 PNG 已下載（300 dpi 尺寸）');
   }
@@ -163,7 +173,10 @@
     ['orientation','cols','rows','marginX','marginY','gapX','gapY'].forEach(id=>$(id).addEventListener('input',()=>{if($('template').value!=='custom')$('template').value='custom';renderPaper();}));
     $('librarySearch').addEventListener('input',applyFilters);$('libraryCategory').addEventListener('change',applyFilters);
     document.addEventListener('kitchen-catalog-updated',applyFilters);
-    ['name','sub','font','size','color','bg','imageRatio','align','borderColor','borderWidth','inset','offsetX','offsetY','widthAdjust','heightAdjust'].forEach(id=>$(id).addEventListener('input',()=>{const el=$(id);updateActive(id,el.type==='number'?Number(el.value):el.value);if(id==='imageRatio')$('ratioValue').textContent=`${el.value}%`;if(id==='bg'&&window.rememberKitchenColor)window.rememberKitchenColor(el.value);}));
+    ['name','sub','font','size','color','bg','imageRatio','direction','align','borderColor','borderWidth','inset','offsetX','offsetY','widthAdjust','heightAdjust'].forEach(id=>$(id).addEventListener('input',()=>{const el=$(id);updateActive(id,el.type==='number'?Number(el.value):el.value);if(id==='imageRatio')$('ratioValue').textContent=`${el.value}%`;if(id==='bg'&&window.rememberKitchenColor)window.rememberKitchenColor(el.value);}));
+    const TEXT_KEY='kitchenLabelTextLibrary';
+    function renderTextLibrary(){const root=$('textLibrary');if(!root)return;const entries=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');root.innerHTML='';entries.forEach((entry,index)=>{const row=document.createElement('div');row.className='text-library-entry';const use=document.createElement('button');use.type='button';use.className='text-library-use';use.textContent=entry.name+(entry.sub?`｜${entry.sub}`:'');use.title='套用此文字';use.addEventListener('click',()=>{updateActive('name',entry.name);updateActive('sub',entry.sub||'');selectCell(active);toast('已套用文字庫內容');});const del=document.createElement('button');del.type='button';del.className='text-library-delete';del.textContent='移除';del.addEventListener('click',()=>{const list=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');list.splice(index,1);localStorage.setItem(TEXT_KEY,JSON.stringify(list));renderTextLibrary();});row.append(use,del);root.append(row);});if(!entries.length)root.textContent='尚無文字，輸入名稱後可收錄。';}
+    $('saveText').addEventListener('click',()=>{const name=$('name').value.trim(),sub=$('sub').value.trim();if(!name){toast('請先輸入標籤名稱');return;}const list=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');if(list.some(x=>x.name===name&&x.sub===sub)){toast('這組文字已在文字庫');return;}list.unshift({name,sub});localStorage.setItem(TEXT_KEY,JSON.stringify(list.slice(0,80)));renderTextLibrary();toast('已收錄至本機文字庫');});renderTextLibrary();
     $('borderOn').addEventListener('change',()=>updateActive('borderOn',$('borderOn').checked));
     $('clear').addEventListener('click',()=>{if(active<0)return;cells[active].data=null;renderCell(active);selectCell(active);toast('已清除此格');});
     $('copyStyle').addEventListener('click',()=>{if(active<0||!cells[active].data)return;const source=cells[active].data,styleKeys=['font','size','color','bg','imageRatio','align','borderOn','borderColor','borderWidth','inset'];const targets=$('copyTo').value==='all'?cells.map((_,i)=>i):[active+1];targets.forEach(i=>{if(!cells[i])return;const next=cells[i].data||defaultCell();styleKeys.forEach(key=>next[key]=source[key]);cells[i].data=next;renderCell(i);});toast('已複製外觀設定');});
