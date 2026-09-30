@@ -3,7 +3,6 @@
   const status = document.getElementById('catalogSyncStatus');
   const builtIns = new Set(['量匙','白柄菜刀','烘焙模具','刮刀組','削皮器','吐司刀','廚房剪刀','料理盆組','網勺','量杯組','廚房計時器','食物溫度計','烘焙切模組','蒸布','竹簾','料理夾','廚刀組','放大鏡']);
   const read = (key) => { try { const data = JSON.parse(localStorage.getItem(key) || '[]'); return Array.isArray(data) ? data : []; } catch { return []; } };
-  const esc = (value) => String(value).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function sync() {
     if (!root || typeof window.useKitchenTool !== 'function') return;
     root.querySelectorAll('[data-dynamic-catalog]').forEach((node) => node.remove());
@@ -29,15 +28,17 @@
     });
     for (const item of byName.values()) {
       const button = document.createElement('button');
-      button.className = 'tool'; button.dataset.dynamicCatalog = 'true';
+      button.type = 'button'; button.className = 'tool'; button.dataset.dynamicCatalog = 'true';
       const image = item.imageData || (item.file ? '../kitchen-illustration/assets/廚房工具插畫示例/' + encodeURIComponent(item.file) : 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260"><rect width="100%" height="100%" fill="#f4f0e3"/><text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" fill="#748078" font-size="24">待補插畫</text></svg>'));
-      button.innerHTML = image
-        ? `<img src="${image}" alt=""><b>${esc(item.name)}</b>`
-        : `<img src="${image}" alt=""><b>${esc(item.name)}</b>`;
-      button.onclick = () => window.useKitchenTool(image, item.name);
+      const img = document.createElement('img'); img.loading = 'lazy'; img.src = image; img.alt = `${item.name}插畫`;
+      const title = document.createElement('b'); title.textContent = item.name;
+      const category = document.createElement('small'); category.textContent = item.category || '其他工具';
+      button.append(img, title, category);
+      button.__kitchenTool = { image, name: item.name, category: item.category || '其他工具', features: item.features || '', id: item.id, sourceKind: item._base ? 'catalog' : 'local' };
       root.append(button);
     }
     if (status) status.textContent = `已載入 ${root.querySelectorAll('.tool').length} 項工具`;
+    document.dispatchEvent(new CustomEvent('kitchen-catalog-updated'));
   }
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('syncCatalog')?.addEventListener('click', sync);
