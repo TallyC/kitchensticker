@@ -66,13 +66,12 @@
     c.style.width=mmPercent(w,layout.w); c.style.height=mmPercent(h,layout.h);
     c.style.border=d?.borderOn?`${Math.max(0,Number(d.borderWidth)||0)}mm ${$('template').value==='custom'?'dashed':'solid'} ${d.borderColor||'#b8bbae'}`:'none';
     c.style.background=d?.bg||'#fff'; c.innerHTML='';
-    if(!d.image){const empty=document.createElement('div');empty.className='empty';empty.innerHTML=`${i+1}<br>選取後加入工具`;c.append(empty);return;}
-    c.style.padding='0';
+    if(!d.image&&!d.name){const empty=document.createElement('div');empty.className='empty';empty.innerHTML=`${i+1}<br>選取後加入工具`;c.append(empty);return;}
     const inset=Math.max(0,Number(d.inset)||0);
     c.style.setProperty('--inset-x',`${inset/w*100}%`);c.style.setProperty('--inset-y',`${inset/h*100}%`);
-    c.classList.toggle('horizontal',d.direction==='horizontal');c.style.justifyContent=d.align==='top'?'flex-start':d.align==='bottom'?'flex-end':'center';
+    c.classList.toggle('text-only',!d.image);c.classList.toggle('horizontal',!!d.image&&d.direction==='horizontal');c.style.padding=d.image?'0':'';c.style.justifyContent=d.align==='top'?'flex-start':d.align==='bottom'?'flex-end':'center';
     const group=document.createElement('div');group.className='cell-content';
-    const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.setProperty('--image-ratio',`${Math.max(25,Math.min(85,Number(d.imageRatio)||58))}%`);group.append(im);
+    if(d.image){const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.setProperty('--image-ratio',`${Math.max(25,Math.min(85,Number(d.imageRatio)||58))}%`);group.append(im);}
     const text=document.createElement('div');text.className='cell-text';
     const name=document.createElement('strong');name.textContent=d.name;name.style.fontFamily=fonts[d.font]||fonts.serif;name.style.fontSize=`${Math.max(8,Number(d.size)||24)}pt`;name.style.color=d.color;text.append(name);
     if(d.sub){const sub=document.createElement('small');sub.textContent=d.sub;sub.style.fontFamily=fonts[d.font]||fonts.serif;sub.style.fontSize=`${Math.max(7,(Number(d.size)||24)*.58)}pt`;sub.style.color=d.color;text.append(sub);}group.append(text);c.append(group);
@@ -139,7 +138,12 @@
   function updateActive(key,value){if(active<0||!cells[active])return;if(!cells[active].data)cells[active].data=defaultCell();cells[active].data[key]=value;renderCell(active);updateStatus();checkCellBounds();}
   function downloadUrl(url,name){const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();}
   function wrapText(ctx,text,maxWidth){const lines=[];for(const paragraph of String(text||'').split('\n')){let line='';for(const char of paragraph){const next=line+char;if(line&&ctx.measureText(next).width>maxWidth){lines.push(line);line=char;}else line=next;}lines.push(line);}return lines;}
-  async function exportPng(){
+  function makePdf(jpeg,W,H){
+    const enc=new TextEncoder(),ascii=value=>enc.encode(value),head=ascii('%PDF-1.4\n'),imagePrefix=ascii(`<< /Type /XObject /Subtype /Image /Width ${W} /Height ${H} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpeg.length} >>\nstream\n`),imageSuffix=ascii('\nendstream'),pageW=W>H?'841.89':'595.28',pageH=W>H?'595.28':'841.89',objects=[ascii('<< /Type /Catalog /Pages 2 0 R >>'),ascii('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'),ascii(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`),null,ascii(`<< /Length ${ascii(`q ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q`).length} >>\nstream\nq ${pageW} 0 0 ${pageH} 0 0 cm /Im0 Do Q\nendstream`)];
+    objects[3]=new Uint8Array(imagePrefix.length+jpeg.length+imageSuffix.length);objects[3].set(imagePrefix);objects[3].set(jpeg,imagePrefix.length);objects[3].set(imageSuffix,imagePrefix.length+jpeg.length);
+    const chunks=[head],offsets=[0];let length=head.length;objects.forEach((obj,index)=>{offsets.push(length);const start=ascii(`${index+1} 0 obj\n`),end=ascii('\nendobj\n');chunks.push(start,obj,end);length+=start.length+obj.length+end.length;});const xrefOffset=length,xref=ascii(`xref\n0 ${objects.length+1}\n0000000000 65535 f \n${offsets.slice(1).map(offset=>`${String(offset).padStart(10,'0')} 00000 n \n`).join('')}trailer\n<< /Size ${objects.length+1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);chunks.push(xref);return new Blob(chunks,{type:'application/pdf'});
+  }
+  async function exportA4(type='png'){
     if(layout.invalid){toast('版面超出 A4，請先修正');return;}
     const W=$('orientation').value==='landscape'?3508:2480,H=$('orientation').value==='landscape'?2480:3508,canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
@@ -148,23 +152,25 @@
       const d=item.data;if(!d)return;const col=i%layout.cols,row=Math.floor(i/layout.cols),x=(layout.x+col*(layout.cw+layout.gx)+(Number(d.offsetX)||0))*scaleX,y=(layout.y+row*(layout.ch+layout.gy)+(Number(d.offsetY)||0))*scaleY,w=Math.max(1,layout.cw+(Number(d.widthAdjust)||0))*scaleX,h=Math.max(1,layout.ch+(Number(d.heightAdjust)||0))*scaleY,pad=(Number(d.inset)||0)*scaleX;
       ctx.fillStyle=d.bg||'#f4f0e3';ctx.fillRect(x,y,w,h);
       if(d.borderOn){ctx.strokeStyle=d.borderColor||'#b8bbae';ctx.lineWidth=Math.max(1,(Number(d.borderWidth)||.2)*scaleX);ctx.setLineDash($('template').value==='custom'?[8,8]:[]);ctx.strokeRect(x+ctx.lineWidth/2,y+ctx.lineWidth/2,w-ctx.lineWidth,h-ctx.lineWidth);ctx.setLineDash([]);}
-      const image=images[i],pt=Math.max(8,Number(d.size)||24),fontPx=pt*300/72,innerX=x+pad,innerY=y+pad,innerW=Math.max(1,w-pad*2),innerH=Math.max(1,h-pad*2),horizontal=d.direction==='horizontal',ratio=Math.max(.25,Math.min(.85,(Number(d.imageRatio)||58)/100));
+      const image=images[i],pt=Math.max(8,Number(d.size)||24),fontPx=pt*300/72,innerX=x+pad,innerY=y+pad,innerW=Math.max(1,w-pad*2),innerH=Math.max(1,h-pad*2),horizontal=!!image&&d.direction==='horizontal',ratio=Math.max(.25,Math.min(.85,(Number(d.imageRatio)||58)/100));
       ctx.fillStyle=d.color||'#24332d';ctx.textBaseline='middle';ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
       const subPx=Math.max(7,pt*.58)*300/72;
       if(horizontal){
-        const imageW=innerW*ratio,textW=innerW-imageW,gap=Math.min(12,innerW*.025),ix=innerX+(imageW-(image?imageW*.94:0))/2;
+        const imageW=image?innerW*ratio:0,textW=innerW-imageW,gap=image?Math.min(12,innerW*.025):0;
         if(image){const fit=Math.min(imageW*.94/image.naturalWidth,innerH*.94/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;ctx.drawImage(image,innerX+(imageW-iw)/2,innerY+(innerH-ih)/2,iw,ih);}
-        const tx=innerX+imageW+gap,availableW=Math.max(1,textW-gap),lines=wrapText(ctx,d.name,availableW),subLine=d.sub?subPx*1.2:0,total=lines.length*fontPx*1.15+subLine,startY=innerY+(innerH-total)/2;ctx.textAlign='left';
+        const tx=innerX+imageW+gap,availableW=Math.max(1,textW-gap),lines=wrapText(ctx,d.name,availableW),subLine=d.sub?subPx*1.2:0,total=lines.length*fontPx*1.15+subLine,startY=innerY+(innerH-total)/2;ctx.textAlign=image?'left':'center';
         lines.forEach((line,j)=>ctx.fillText(line,tx,startY+fontPx*.58+j*fontPx*1.15,availableW));if(d.sub){ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`;ctx.fillText(d.sub,tx,startY+lines.length*fontPx*1.15+subPx*.55,availableW);}
       }else{
-        const measure=ctx.measureText(d.name||'').width,subW=d.sub?(ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`,ctx.measureText(d.sub).width):0;ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
-        const textW=Math.min(innerW,Math.max(measure,subW)),fit=Math.min(1,innerW/Math.max(1,textW)),effectiveFont=fontPx*fit;ctx.font=`600 ${effectiveFont}px ${fonts[d.font]||fonts.serif}`;
-        const lines=wrapText(ctx,d.name,innerW),textH=lines.length*effectiveFont*1.12+(d.sub?subPx*1.2:0),imageH=innerH*ratio,gap=Math.min(innerH*.04,18),groupH=Math.min(innerH,imageH+gap+textH),start=innerY+(d.align==='top'?0:d.align==='bottom'?innerH-groupH:(innerH-groupH)/2);
+        ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;const lines=wrapText(ctx,d.name,innerW),longest=Math.max(1,...lines.map(line=>ctx.measureText(line).width)),subW=d.sub?(ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`,ctx.measureText(d.sub).width):0;ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
+        const effectiveFont=fontPx*Math.min(1,innerW/Math.max(longest,subW,1));ctx.font=`600 ${effectiveFont}px ${fonts[d.font]||fonts.serif}`;
+        const textH=lines.length*effectiveFont*1.12+(d.sub?subPx*1.2:0),imageH=image?innerH*ratio:0,gap=image?Math.min(innerH*.04,18):0,groupH=Math.min(innerH,imageH+gap+textH),start=innerY+(d.align==='top'?0:d.align==='bottom'?innerH-groupH:(innerH-groupH)/2);
         if(image){const fit=Math.min(innerW*.96/image.naturalWidth,Math.max(1,imageH-gap)*.96/image.naturalHeight),iw=image.naturalWidth*fit,ih=image.naturalHeight*fit;ctx.drawImage(image,innerX+(innerW-iw)/2,start+(imageH-ih)/2,iw,ih);}
         ctx.textAlign='center';const textStart=start+imageH+gap+(textH-(lines.length*effectiveFont*1.12+(d.sub?subPx*1.2:0)))/2;lines.forEach((line,j)=>ctx.fillText(line,innerX+innerW/2,textStart+effectiveFont*.58+j*effectiveFont*1.12,innerW));if(d.sub){ctx.font=`${subPx}px ${fonts[d.font]||fonts.serif}`;ctx.fillText(d.sub,innerX+innerW/2,textStart+lines.length*effectiveFont*1.12+subPx*.55,innerW);}
       }
     });
-    downloadUrl(canvas.toDataURL('image/png'),'廚房工具_A4.png');toast('A4 PNG 已下載（300 dpi 尺寸）');
+    const pngBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!pngBlob){toast('檔案產生失敗，請降低標籤數後重試');return;}let fileBlob=pngBlob,previewUrl=URL.createObjectURL(pngBlob),fileName='廚房工具_A4.png';
+    if(type==='pdf'){const jpegBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.96));if(!jpegBlob){toast('PDF 產生失敗，請降低標籤數後重試');return;}fileBlob=makePdf(new Uint8Array(await jpegBlob.arrayBuffer()),W,H);fileName='廚房工具_A4.pdf';URL.revokeObjectURL(previewUrl);previewUrl=URL.createObjectURL(jpegBlob);}
+    if(window.kitchenExportUrl)URL.revokeObjectURL(window.kitchenExportUrl);window.kitchenExportUrl=URL.createObjectURL(fileBlob);const preview=$('exportPreview'),save=$('saveFile');preview.src=previewUrl;save.href=window.kitchenExportUrl;save.download=fileName;save.textContent=`下載 ${type.toUpperCase()}`;$('exportTitle').textContent=`A4 ${type.toUpperCase()} 檔案已準備好`;$('shareHint').textContent='若手機沒有自動存檔，請點「分享／儲存到手機」；也可長按預覽圖片儲存。';$('exportDialog').showModal();toast(`${type.toUpperCase()} 已產生，請在預覽視窗下載或分享`);
   }
   function snapshot(){return {orientation:$('orientation').value,template:$('template').value,cols:Number($('cols').value),rows:Number($('rows').value),marginX:Number($('marginX').value),marginY:Number($('marginY').value),gapX:Number($('gapX').value),gapY:Number($('gapY').value),cells:cells.map(c=>c.data?{...c.data}:null)};}
   function restore(data){
@@ -185,10 +191,11 @@
     $('showGuides').addEventListener('change',()=> $('paper').classList.toggle('guides-off',!$('showGuides').checked));
     document.querySelectorAll('[data-inset]').forEach(button=>button.addEventListener('click',()=>{const value=Number(button.dataset.inset);$('inset').value=value;updateActive('inset',value);}));
     $('clear').addEventListener('click',()=>{if(active<0)return;cells[active].data=null;renderCell(active);selectCell(active);toast('已清除此格');});
+    $('removeImage').addEventListener('click',()=>{if(active<0)return;const d=cells[active].data||defaultCell();d.image='';d.imageName='';if(!d.name)d.name='純文字標籤';cells[active].data=d;renderCell(active);selectCell(active);toast('已移除插圖，可直接編輯文字');});
     $('copyStyle').addEventListener('click',()=>{if(active<0||!cells[active].data)return;const source=cells[active].data,styleKeys=['font','size','color','bg','imageRatio','direction','align','borderOn','borderColor','borderWidth','inset'];const targets=$('copyTo').value==='all'?cells.map((_,i)=>i):[active+1];targets.forEach(i=>{if(!cells[i])return;const next=cells[i].data||defaultCell();styleKeys.forEach(key=>next[key]=source[key]);cells[i].data=next;renderCell(i);});toast('已複製外觀設定');});
     $('upload').addEventListener('change',event=>{const file=event.target.files?.[0];if(!file||active<0)return;const reader=new FileReader();reader.onload=()=>{const current=cells[active].data||defaultCell();current.image=String(reader.result);current.imageName=file.name;current.name=current.name||file.name.replace(/\.[^.]+$/,'');cells[active].data=current;renderCell(active);selectCell(active);toast('此格插畫已替換');};reader.readAsDataURL(file);event.target.value='';});
     $('editCatalog').addEventListener('click',()=>window.open('../kitchen-illustration/','_blank','noopener'));
-    $('png').addEventListener('click',exportPng);$('print').addEventListener('click',()=>{if(layout.invalid){toast('版面超出 A4，請先修正');return;}document.body.classList.toggle('landscape-print',$('orientation').value==='landscape');window.print();});
+    $('png').addEventListener('click',()=>exportA4('png'));$('pdf').addEventListener('click',()=>exportA4('pdf'));$('closeExport').addEventListener('click',()=>$('exportDialog').close());$('exportDialog').addEventListener('click',event=>{if(event.target===$('exportDialog'))$('exportDialog').close();});$('shareFile').addEventListener('click',async()=>{const url=window.kitchenExportUrl;if(!url)return;try{const response=await fetch(url),blob=await response.blob(),file=new File([blob],$('saveFile').download,{type:blob.type});if(navigator.canShare?.({files:[file]})&&navigator.share)await navigator.share({files:[file],title:'廚房工具 A4 標籤'});else{$('shareHint').textContent='此瀏覽器沒有分享檔案功能，請按「下載檔案」或長按上方預覽圖片儲存。';}}catch(error){if(error.name!=='AbortError')$('shareHint').textContent='分享未完成，請按「下載檔案」或長按預覽圖片儲存。';}});$('print').addEventListener('click',()=>{if(layout.invalid){toast('版面超出 A4，請先修正');return;}document.body.classList.toggle('landscape-print',$('orientation').value==='landscape');toast('請在手機列印選單選「儲存為 PDF」或「儲存到檔案」');setTimeout(()=>window.print(),180);});
     $('orientation').addEventListener('change',()=>{document.body.classList.toggle('landscape-print',$('orientation').value==='landscape');});
     renderPaper(false);window.useKitchenTool=useTool;window.kitchenCells=cells;window.getKitchenSnapshot=snapshot;window.restoreKitchenSnapshot=restore;window.kitchenLayout=()=>({...layout});
     window.addEventListener('storage',()=>applyFilters());
