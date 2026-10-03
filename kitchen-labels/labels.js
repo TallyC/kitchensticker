@@ -53,10 +53,10 @@
     $('templateWarning').textContent=layout.warning; $('templateWarning').hidden=!layout.warning;
     return layout;
   }
-  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:'vertical',align:'center',borderOn:true,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
+  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:'vertical',align:'center',borderOn:false,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
   function mmPercent(value,total){return `${value/total*100}%`;}
   function renderCell(i){
-    const item=cells[i]; if(!item)return; const c=item.el,d=item.data;
+    const item=cells[i]; if(!item)return; const c=item.el,d=item.data||defaultCell();
     c.className='cell'+(i===active?' selected':'');
     const col=i%layout.cols,row=Math.floor(i/layout.cols);
     const x=layout.x+col*(layout.cw+layout.gx)+(Number(d?.offsetX)||0),y=layout.y+row*(layout.ch+layout.gy)+(Number(d?.offsetY)||0),w=Math.max(1,layout.cw+(Number(d?.widthAdjust)||0)),h=Math.max(1,layout.ch+(Number(d?.heightAdjust)||0));
@@ -64,8 +64,10 @@
     c.style.width=mmPercent(w,layout.w); c.style.height=mmPercent(h,layout.h);
     c.style.border=d?.borderOn?`${Math.max(0,Number(d.borderWidth)||0)}mm ${$('template').value==='custom'?'dashed':'solid'} ${d.borderColor||'#b8bbae'}`:'none';
     c.style.background=d?.bg||'#fff'; c.innerHTML='';
-    if(!d?.image){const empty=document.createElement('div');empty.className='empty';empty.innerHTML=`${i+1}<br>選取後加入工具`;c.append(empty);return;}
-    c.style.padding=`${Math.max(0,Number(d.inset)||0)/h*100}% ${Math.max(0,Number(d.inset)||0)/w*100}%`;
+    if(!d.image){const empty=document.createElement('div');empty.className='empty';empty.innerHTML=`${i+1}<br>選取後加入工具`;c.append(empty);return;}
+    c.style.padding='0';
+    const inset=Math.max(0,Number(d.inset)||0);
+    c.style.setProperty('--inset-x',`${inset/w*100}%`);c.style.setProperty('--inset-y',`${inset/h*100}%`);
     c.classList.toggle('horizontal',d.direction==='horizontal');c.style.justifyContent=d.align==='top'?'flex-start':d.align==='bottom'?'flex-end':'center';
     const group=document.createElement('div');group.className='cell-content';
     const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.setProperty('--image-ratio',`${Math.max(25,Math.min(85,Number(d.imageRatio)||58))}%`);group.append(im);
@@ -86,7 +88,7 @@
     const saved=preserve?cells.map((c)=>c.data):[];
     $('paper').className=`paper ${$('orientation').value}`;
     $('paper').setAttribute('aria-label',`A4 ${$('orientation').value==='portrait'?'直式':'橫式'}，${count} 格`);
-    $('paper').innerHTML=''; cells=[];
+    $('paper').innerHTML='';$('paper').classList.toggle('guides-off',!$('showGuides').checked); cells=[];
     for(let i=0;i<count;i++){
       const el=document.createElement('div');el.className='cell';el.dataset.index=i;
       el.addEventListener('click',()=>selectCell(i));$('paper').append(el);
@@ -178,8 +180,10 @@
     function renderTextLibrary(){const root=$('textLibrary');if(!root)return;const entries=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');root.innerHTML='';entries.forEach((entry,index)=>{const row=document.createElement('div');row.className='text-library-entry';const use=document.createElement('button');use.type='button';use.className='text-library-use';use.textContent=entry.name+(entry.sub?`｜${entry.sub}`:'');use.title='套用此文字';use.addEventListener('click',()=>{updateActive('name',entry.name);updateActive('sub',entry.sub||'');selectCell(active);toast('已套用文字庫內容');});const del=document.createElement('button');del.type='button';del.className='text-library-delete';del.textContent='移除';del.addEventListener('click',()=>{const list=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');list.splice(index,1);localStorage.setItem(TEXT_KEY,JSON.stringify(list));renderTextLibrary();});row.append(use,del);root.append(row);});if(!entries.length)root.textContent='尚無文字，輸入名稱後可收錄。';}
     $('saveText').addEventListener('click',()=>{const name=$('name').value.trim(),sub=$('sub').value.trim();if(!name){toast('請先輸入標籤名稱');return;}const list=JSON.parse(localStorage.getItem(TEXT_KEY)||'[]');if(list.some(x=>x.name===name&&x.sub===sub)){toast('這組文字已在文字庫');return;}list.unshift({name,sub});localStorage.setItem(TEXT_KEY,JSON.stringify(list.slice(0,80)));renderTextLibrary();toast('已收錄至本機文字庫');});renderTextLibrary();
     $('borderOn').addEventListener('change',()=>updateActive('borderOn',$('borderOn').checked));
+    $('showGuides').addEventListener('change',()=> $('paper').classList.toggle('guides-off',!$('showGuides').checked));
+    document.querySelectorAll('[data-inset]').forEach(button=>button.addEventListener('click',()=>{const value=Number(button.dataset.inset);$('inset').value=value;updateActive('inset',value);}));
     $('clear').addEventListener('click',()=>{if(active<0)return;cells[active].data=null;renderCell(active);selectCell(active);toast('已清除此格');});
-    $('copyStyle').addEventListener('click',()=>{if(active<0||!cells[active].data)return;const source=cells[active].data,styleKeys=['font','size','color','bg','imageRatio','align','borderOn','borderColor','borderWidth','inset'];const targets=$('copyTo').value==='all'?cells.map((_,i)=>i):[active+1];targets.forEach(i=>{if(!cells[i])return;const next=cells[i].data||defaultCell();styleKeys.forEach(key=>next[key]=source[key]);cells[i].data=next;renderCell(i);});toast('已複製外觀設定');});
+    $('copyStyle').addEventListener('click',()=>{if(active<0||!cells[active].data)return;const source=cells[active].data,styleKeys=['font','size','color','bg','imageRatio','direction','align','borderOn','borderColor','borderWidth','inset'];const targets=$('copyTo').value==='all'?cells.map((_,i)=>i):[active+1];targets.forEach(i=>{if(!cells[i])return;const next=cells[i].data||defaultCell();styleKeys.forEach(key=>next[key]=source[key]);cells[i].data=next;renderCell(i);});toast('已複製外觀設定');});
     $('upload').addEventListener('change',event=>{const file=event.target.files?.[0];if(!file||active<0)return;const reader=new FileReader();reader.onload=()=>{const current=cells[active].data||defaultCell();current.image=String(reader.result);current.imageName=file.name;current.name=current.name||file.name.replace(/\.[^.]+$/,'');cells[active].data=current;renderCell(active);selectCell(active);toast('此格插畫已替換');};reader.readAsDataURL(file);event.target.value='';});
     $('editCatalog').addEventListener('click',()=>window.open('../kitchen-illustration/','_blank','noopener'));
     $('png').addEventListener('click',exportPng);$('print').addEventListener('click',()=>{if(layout.invalid){toast('版面超出 A4，請先修正');return;}document.body.classList.toggle('landscape-print',$('orientation').value==='landscape');window.print();});

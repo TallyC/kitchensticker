@@ -65,7 +65,7 @@
       </aside>
 
       <section class="preview-area">
-        <div class="preview-heading"><div><h2>標籤排版預覽</h2><p>可選市售貼紙尺寸，或自訂欄列、邊界與間距；選取任一格即可編輯。</p></div><span id="selectionStatus" class="pill">尚未加入工具</span></div>
+        <div class="preview-heading"><div><h2>標籤排版預覽</h2><p>可選市售貼紙尺寸，或自訂欄列、邊界與間距；選取任一格即可編輯。</p><div class="guide-controls"><label><input id="showGuides" type="checkbox" checked> 顯示編輯輔助線</label><span><i class="guide-swatch cut"></i>裁切範圍　<i class="guide-swatch safe"></i>內容安全範圍</span><small>輔助線只在畫面顯示，不會出現在列印或 PNG。</small></div></div><span id="selectionStatus" class="pill">尚未加入工具</span></div>
         <div class="paper-wrap"><div class="paper portrait" id="paper" aria-label="A4 標籤預覽"></div></div>
         <p class="note preview-note">預覽外框是裁切參考線；實際貼紙位置依所選紙張模板與印表機校正而定。</p>
       </section>
@@ -84,10 +84,10 @@
             <div class="field"><label for="align">內容對齊</label><select id="align"><option value="center">置中（緊湊）</option><option value="top">靠上</option><option value="bottom">靠下</option></select></div>
             <div class="row"><div class="field"><label for="color">文字顏色</label><input id="color" type="color" value="#24332d"></div><div class="field"><label for="bg">標籤底色</label><input id="bg" type="color" value="#f4f0e3"></div></div>
             <details class="advanced"><summary>此格框線、內距與位置／尺寸</summary>
-              <label class="check"><input id="borderOn" type="checkbox" checked> 顯示此格外框／裁切線</label>
+              <label class="check"><input id="borderOn" type="checkbox"> 列印此格外框（非編輯輔助線）</label>
               <div class="row"><div class="field"><label for="borderColor">框線顏色</label><input id="borderColor" type="color" value="#b8bbae"></div><div class="field"><label for="borderWidth">線寬（mm）</label><input id="borderWidth" type="number" min="0" max="2" step="0.1" value="0.2"></div></div>
-              <div class="field"><label for="inset">內容安全內距（mm）</label><input id="inset" type="number" min="0" max="12" step="0.5" value="3"></div>
-              <p class="note">微調以版型原尺寸為基準；超出 A4 會提示並暫停列印。</p>
+              <div class="field"><label for="inset">內容安全內距（mm）</label><input id="inset" type="number" min="0" max="12" step="0.5" value="3"><div class="inset-presets" aria-label="內距快速選擇"><button type="button" data-inset="0">0 mm</button><button type="button" data-inset="2">2 mm</button><button type="button" data-inset="4">4 mm</button><button type="button" data-inset="6">6 mm</button></div><small>以標籤裁切線向內量；0 mm 代表內容可延伸至邊緣。</small></div>
+              <p class="note">X／Y、寬／高調整的是整個標籤格位置與尺寸；內距只移動格內插畫和文字。</p>
               <div class="row"><div class="field"><label for="offsetX">左右移動 X（mm）</label><input id="offsetX" type="number" min="-10" max="10" step="0.1" value="0"></div><div class="field"><label for="offsetY">上下移動 Y（mm）</label><input id="offsetY" type="number" min="-10" max="10" step="0.1" value="0"></div></div>
               <div class="row"><div class="field"><label for="widthAdjust">寬度增減（mm）</label><input id="widthAdjust" type="number" min="-10" max="10" step="0.1" value="0"></div><div class="field"><label for="heightAdjust">高度增減（mm）</label><input id="heightAdjust" type="number" min="-10" max="10" step="0.1" value="0"></div></div>
             </details>

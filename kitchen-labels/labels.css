@@ -6,3 +6,14 @@
 .cell-text{display:flex;flex-direction:column;justify-content:center;align-items:center;min-width:0;max-width:100%;max-height:100%;overflow:hidden}
 .cell.horizontal .cell-content{flex-direction:row;gap:2%}.cell.horizontal .cell-content img{width:var(--image-ratio);height:auto;max-width:var(--image-ratio);max-height:92%}.cell.horizontal .cell-text{align-items:flex-start;flex:1;text-align:left}.cell.horizontal strong,.cell.horizontal small{text-align:left}
 .text-library{padding:9px;background:#f5f5ef;border-radius:8px}.text-library-head{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:.78rem}.text-library-head .btn{min-height:30px;padding:4px 7px;font-size:.7rem}.text-library-list{display:grid;gap:4px;margin:7px 0}.text-library-entry{display:flex;gap:4px;min-width:0}.text-library-use{flex:1;min-width:0;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;cursor:pointer}.text-library-delete{border:0;background:transparent;color:var(--muted);font-size:.68rem;cursor:pointer}.text-library>small{font-size:.68rem;color:var(--muted)}
+.cell-content{position:absolute;inset:var(--inset-y,0) var(--inset-x,0);width:auto;height:auto}
+.cell::before,.cell::after{content:"";position:absolute;pointer-events:none;z-index:4}
+.cell::after{inset:0;border:1px dashed #66736b99}
+.cell::before{inset:var(--inset-y,0) var(--inset-x,0);border:1px dashed #bd9853aa;z-index:3}
+.paper.guides-off .cell::before,.paper.guides-off .cell::after{display:none}
+.guide-controls{display:flex;align-items:center;gap:7px 14px;flex-wrap:wrap;margin-top:7px;font-size:.72rem;color:var(--muted)}
+.guide-controls label{display:flex;align-items:center;gap:5px;color:var(--green);font-weight:650;cursor:pointer}
+.guide-controls input{accent-color:var(--green)}.guide-controls small{font-size:.68rem}
+.guide-swatch{display:inline-block;width:15px;border-top:1px dashed #66736b;vertical-align:middle}.guide-swatch.safe{border-color:#bd9853}
+.inset-presets{display:flex;gap:5px;margin:6px 0}.inset-presets button{padding:4px 9px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--green);font-size:.72rem;cursor:pointer}.inset-presets button:hover,.inset-presets button:focus-visible{border-color:var(--green);background:#edf1e9}
+@media print{.cell::before,.cell::after{display:none!important}}
