@@ -2,8 +2,10 @@
   const $ = (id) => document.getElementById(id);
   const MM_A4 = { portrait: { w: 210, h: 297 }, landscape: { w: 297, h: 210 } };
   const fonts = { serif: '"Noto Serif TC", Georgia, serif', sans: '"Noto Sans TC", system-ui, sans-serif', round: '"Arial Rounded MT Bold", "Noto Sans TC", sans-serif' };
+  // 直接內建完整 43 張圖檔；標籤頁不必先開插畫工作台或依賴 localStorage。
   const assets = [
-    ['量匙.png','量測與計時'],['白柄菜刀.png','備料與切割'],['烘焙模具.png','烘焙工具'],['刮刀組.png','備料與切割'],['削皮器.png','備料與切割'],['吐司刀.png','備料與切割'],['廚房剪刀.png','備料與切割'],['料理盆組.png','清洗與濾水'],['網勺.png','清洗與濾水'],['量杯組.png','量測與計時'],['廚房計時器.png','量測與計時'],['食物溫度計.png','量測與計時'],['烘焙切模組.png','烘焙工具'],['蒸布.png','蒸煮與布具'],['竹簾.png','蒸煮與布具'],['料理夾.png','備料與切割'],['廚刀組.png','備料與切割'],['放大鏡.png','其他工具']
+    ['量匙.png','量測與計時','量匙'],['白柄菜刀.png','備料與切割','白柄菜刀'],['烘焙模具.png','烘焙工具','烘焙模具／奶油造型模具'],['刮刀組.png','備料與切割','刮刀組'],['削皮器.png','備料與切割','削皮器'],['吐司刀.png','備料與切割','吐司刀'],['廚房剪刀.png','備料與切割','廚房剪刀'],['料理盆組.png','清洗與濾水','料理盆組'],['網勺.png','清洗與濾水','網勺'],['量杯組.png','量測與計時','量杯組'],['廚房計時器.png','量測與計時','廚房計時器'],['食物溫度計.png','量測與計時','食物溫度計'],['烘焙切模組.png','烘焙工具','烘焙切模組'],['蒸布.png','蒸煮與布具','蒸布'],['竹簾.png','蒸煮與布具','竹簾'],['料理夾.png','備料與切割','料理夾'],['廚刀組.png','備料與切割','廚刀組'],['放大鏡.png','其他工具','放大鏡'],
+    ['擀麵棍組.png','備料與切割','擀麵棍組'],['小刮刀.png','備料與切割','小刮刀'],['小型水果刀.png','備料與切割','小型廚房水果刀'],['不鏽鋼堅果夾.png','備料與切割','不鏽鋼堅果夾／核桃夾'],['中藥布袋.png','蒸煮與布具','中藥布袋'],['冰淇淋杓.png','其他工具','冰淇淋杓'],['咖啡法蘭絨濾布架.png','沖泡與濾具','咖啡法蘭絨濾布架'],['帶柄木滾輪.png','備料與切割','帶柄滾輪(木)'],['金屬刮板.png','備料與切割','金屬刮板'],['長柄攪拌匙刮棒.png','烘焙工具','長柄不鏽鋼攪拌匙／刮棒'],['烘焙工具瀝水底座.png','其他工具','烘焙工具隔板／瀝水底座'],['桃紅柄不鏽鋼抹刀.png','烘焙工具','不鏽鋼抹刀（桃紅把手）'],['細網篩.png','清洗與濾水','細網篩'],['蛋糕切割器.png','烘焙工具','蛋糕切割器'],['量杯.png','量測與計時','量杯'],['量匙組.png','量測與計時','量匙組'],['飯匙.png','其他工具','飯匙'],['塑膠刮板.png','備料與切割','塑膠刮板'],['廚房刷具.png','清洗與濾水','廚房刷具'],['橡皮刮刀.png','烘焙工具','橡皮刮刀（黃色長柄）'],['雙頭挖球器.png','備料與切割','雙頭不鏽鋼挖球器'],['麵包切割器.png','備料與切割','麵包切割器'],['麵糰打孔滾輪.png','備料與切割','麵糰打孔滾輪'],['奶油花嘴.png','烘焙工具','奶油花嘴'],['披薩刀.png','備料與切割','披薩刀']
   ];
   // 可選市售規格以標籤尺寸與列欄為核心；版面預設置中。購買前仍需核對包裝型號及刀模邊界。
   const templates = {
@@ -53,7 +55,7 @@
     $('templateWarning').textContent=layout.warning; $('templateWarning').hidden=!layout.warning;
     return layout;
   }
-  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:'vertical',align:'center',borderOn:false,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
+  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:layout&&layout.cw>layout.ch?'horizontal':'vertical',align:'center',borderOn:false,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
   function mmPercent(value,total){return `${value/total*100}%`;}
   function renderCell(i){
     const item=cells[i]; if(!item)return; const c=item.el,d=item.data||defaultCell();
@@ -125,7 +127,7 @@
   function buildLibrary(){
     const root=$('library');
     assets.forEach(([file,category])=>{
-      const name=baseName(file),b=document.createElement('button');b.type='button';b.className='tool';
+      const name=assets.find(entry=>entry[0]===file)?.[2]||baseName(file),b=document.createElement('button');b.type='button';b.className='tool';
       const image=`../kitchen-illustration/assets/廚房工具插畫示例/${encodeURIComponent(file)}`;
       const im=document.createElement('img');im.loading='lazy';im.src=image;im.alt=`${name}插畫`;
       const title=document.createElement('b');title.textContent=name;
