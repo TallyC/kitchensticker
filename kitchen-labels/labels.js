@@ -55,7 +55,7 @@
     $('templateWarning').textContent=layout.warning; $('templateWarning').hidden=!layout.warning;
     return layout;
   }
-  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:24,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:layout&&layout.cw>layout.ch?'horizontal':'vertical',align:'center',borderOn:false,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
+  function defaultCell() { return { image:'',imageName:'',name:'',sub:'',font:'serif',size:36,color:'#24332d',bg:'#f4f0e3',imageRatio:58,direction:layout&&layout.cw>layout.ch?'horizontal':'vertical',align:'center',borderOn:false,borderColor:'#b8bbae',borderWidth:.2,inset:3,offsetX:0,offsetY:0,widthAdjust:0,heightAdjust:0 }; }
   function mmPercent(value,total){return `${value/total*100}%`;}
   function renderCell(i){
     const item=cells[i]; if(!item)return; const c=item.el,d=item.data||defaultCell();
@@ -73,8 +73,8 @@
     const group=document.createElement('div');group.className='cell-content';
     if(d.image){const im=document.createElement('img');im.src=d.image;im.alt=d.name;im.style.setProperty('--image-ratio',`${Math.max(25,Math.min(85,Number(d.imageRatio)||58))}%`);group.append(im);}
     const text=document.createElement('div');text.className='cell-text';
-    const name=document.createElement('strong');name.textContent=d.name;name.style.fontFamily=fonts[d.font]||fonts.serif;name.style.fontSize=`${Math.max(8,Number(d.size)||24)}pt`;name.style.color=d.color;text.append(name);
-    if(d.sub){const sub=document.createElement('small');sub.textContent=d.sub;sub.style.fontFamily=fonts[d.font]||fonts.serif;sub.style.fontSize=`${Math.max(7,(Number(d.size)||24)*.58)}pt`;sub.style.color=d.color;text.append(sub);}group.append(text);c.append(group);
+    const name=document.createElement('strong');name.textContent=d.name;name.style.fontFamily=fonts[d.font]||fonts.serif;name.style.fontSize=`${Math.max(8,Number(d.size)||36)}pt`;name.style.color=d.color;text.append(name);
+    if(d.sub){const sub=document.createElement('small');sub.textContent=d.sub;sub.style.fontFamily=fonts[d.font]||fonts.serif;sub.style.fontSize=`${Math.max(7,(Number(d.size)||36)*.58)}pt`;sub.style.color=d.color;text.append(sub);}group.append(text);c.append(group);
   }
   function drawAll(){cells.forEach((_,i)=>renderCell(i));}
   function checkCellBounds(){
@@ -152,7 +152,7 @@
       const d=item.data;if(!d)return;const col=i%layout.cols,row=Math.floor(i/layout.cols),x=(layout.x+col*(layout.cw+layout.gx)+(Number(d.offsetX)||0))*scaleX,y=(layout.y+row*(layout.ch+layout.gy)+(Number(d.offsetY)||0))*scaleY,w=Math.max(1,layout.cw+(Number(d.widthAdjust)||0))*scaleX,h=Math.max(1,layout.ch+(Number(d.heightAdjust)||0))*scaleY,pad=(Number(d.inset)||0)*scaleX;
       ctx.fillStyle=d.bg||'#f4f0e3';ctx.fillRect(x,y,w,h);
       if(d.borderOn){ctx.strokeStyle=d.borderColor||'#b8bbae';ctx.lineWidth=Math.max(1,(Number(d.borderWidth)||.2)*scaleX);ctx.setLineDash($('template').value==='custom'?[8,8]:[]);ctx.strokeRect(x+ctx.lineWidth/2,y+ctx.lineWidth/2,w-ctx.lineWidth,h-ctx.lineWidth);ctx.setLineDash([]);}
-      const image=images[i],pt=Math.max(8,Number(d.size)||24),fontPx=pt*300/72,innerX=x+pad,innerY=y+pad,innerW=Math.max(1,w-pad*2),innerH=Math.max(1,h-pad*2),horizontal=!!image&&d.direction==='horizontal',ratio=Math.max(.25,Math.min(.85,(Number(d.imageRatio)||58)/100));
+      const image=images[i],pt=Math.max(8,Number(d.size)||36),fontPx=pt*300/72,innerX=x+pad,innerY=y+pad,innerW=Math.max(1,w-pad*2),innerH=Math.max(1,h-pad*2),horizontal=!!image&&d.direction==='horizontal',ratio=Math.max(.25,Math.min(.85,(Number(d.imageRatio)||58)/100));
       ctx.fillStyle=d.color||'#24332d';ctx.textBaseline='middle';ctx.font=`600 ${fontPx}px ${fonts[d.font]||fonts.serif}`;
       const subPx=Math.max(7,pt*.58)*300/72;
       if(horizontal){
@@ -192,6 +192,7 @@
     document.querySelectorAll('[data-inset]').forEach(button=>button.addEventListener('click',()=>{const value=Number(button.dataset.inset);$('inset').value=value;updateActive('inset',value);}));
     $('clear').addEventListener('click',()=>{if(active<0)return;cells[active].data=null;renderCell(active);selectCell(active);toast('已清除此格');});
     $('removeImage').addEventListener('click',()=>{if(active<0)return;const d=cells[active].data||defaultCell();d.image='';d.imageName='';if(!d.name)d.name='純文字標籤';cells[active].data=d;renderCell(active);selectCell(active);toast('已移除插圖，可直接編輯文字');});
+    $('applySizeAll').addEventListener('click',()=>{const size=Math.max(8,Math.min(72,Number($('size').value)||36));cells.forEach((cell,index)=>{if(!cell.data?.name)return;cell.data.size=size;renderCell(index);});if(active>=0)selectCell(active);toast(`已將 ${size} pt 套用到本頁所有已填標籤`);});
     $('copyStyle').addEventListener('click',()=>{if(active<0||!cells[active].data)return;const source=cells[active].data,styleKeys=['font','size','color','bg','imageRatio','direction','align','borderOn','borderColor','borderWidth','inset'];const targets=$('copyTo').value==='all'?cells.map((_,i)=>i):[active+1];targets.forEach(i=>{if(!cells[i])return;const next=cells[i].data||defaultCell();styleKeys.forEach(key=>next[key]=source[key]);cells[i].data=next;renderCell(i);});toast('已複製外觀設定');});
     $('upload').addEventListener('change',event=>{const file=event.target.files?.[0];if(!file||active<0)return;const reader=new FileReader();reader.onload=()=>{const current=cells[active].data||defaultCell();current.image=String(reader.result);current.imageName=file.name;current.name=current.name||file.name.replace(/\.[^.]+$/,'');cells[active].data=current;renderCell(active);selectCell(active);toast('此格插畫已替換');};reader.readAsDataURL(file);event.target.value='';});
     $('editCatalog').addEventListener('click',()=>window.open('../kitchen-illustration/','_blank','noopener'));
